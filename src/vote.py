@@ -1,9 +1,9 @@
 import os
 import httpx
 
-OLLAMA_URL = os.getenv("OLLAMA_LOCAL_URL", "http://localhost:11434")
+OLLAMA_URL = os.getenv("OLLAMA_URL", "http://localhost:11434")
 
-async def vote_best_answer(prompt_original, expert_responses):
+def build_voting_prompt(prompt_original, expert_responses):
     context = ""
     for node, text in expert_responses:
         context += f"--- AVIS DE L'EXPERT [{node}] ---\n{text}\n\n"
@@ -15,17 +15,21 @@ async def vote_best_answer(prompt_original, expert_responses):
     PROMPT INITIAL : {prompt_original}
     
     {context}
-    
-    RÉPONSE FINALE CONSENSUS :
     """
-    
+
+    return prompt_vote
+
+async def vote_best_answer(prompt_original, expert_responses):
+
+    prompt_vote = build_voting_prompt(prompt_original, expert_responses)
+    print(f"vote prompt: {prompt_vote}")
     async with httpx.AsyncClient() as client:
         try:
             res = await client.post(f"{OLLAMA_URL}/api/generate", json={
-                "model": "llama3:8b",
+                "model": "llama3.2:3b",
                 "prompt": prompt_vote,
                 "stream": False
-            }, timeout=60.0)
+            }, timeout=120.0)
             return res.json().get("response")
         except Exception as e:
-            return f"Erreur critique du service de vote local : {e}"
+            return f"Erreur critique du service de vote local : {type(e).__name__} : {e}"

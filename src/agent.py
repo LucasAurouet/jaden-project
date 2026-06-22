@@ -46,7 +46,7 @@ async def process_compute(request: ComputeRequest, token: str = Depends(verify_t
             response = await client.post(
                 f"{OLLAMA_URL}/api/generate", 
                 json=ollama_payload, 
-                timeout=60.0
+                timeout=120.0
             )
             return {
                 "node": NODE_NAME,
