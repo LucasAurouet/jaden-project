@@ -1,34 +1,38 @@
-async def cli_interface():
-    print("="*60)
-    print("      M.A.I.A. Core - Production Ready Orchestrator      ")
-    print("="*60)
-    print(f"[Réseau] {len(PEERS)} nœuds d'inférence détectés dans le fichier de config.\n")
+import os
+import asyncio
+import httpx
+from src.routing import route_to_peer
+from src.vote import vote_best_answer
 
-    # On attribue un rôle expert à chaque nœud pour le MVP de manière cyclique
+async def start_cli():
+    print("="*60)
+    print("      M.A.I.A. - Cli Interface      ")
+    print("="*60)
+    
+    peers = [ip.strip() for ip in os.getenv("MAIA_PEER_NODES", "").split(",") if ip]
+    print(f"[Réseau] {len(peers)} noeuds d'inférence configurés.\n")
+    
     expert_roles = ["code", "maths", "writing"]
 
     async with httpx.AsyncClient() as client:
         while True:
             try:
-                prompt = input("\nMAIA App 🦚 > ")
+                prompt = input("\nMAIA App > ")
                 if prompt.lower() == 'q':
                     break
                 if not prompt.strip():
                     continue
                 
-                # ROUTING PARALLÈLE
                 print("[Routeur] Dispatch de la requête vers l'essaim...")
                 tasks = [
                     route_to_peer(client, url, prompt, expert_roles[i % len(expert_roles)]) 
-                    for i, url in enumerate(PEERS)
+                    for i, url in enumerate(peers)
                 ]
                 expert_responses = await asyncio.gather(*tasks)
                 
-                # Log de débogage propre
-                for node, resp in expert_responses:
-                    print(f"\n[Récolte] [{node}] a répondu.")
+                for node, _ in expert_responses:
+                    print(f" └─ [Récolte] Réponse reçue de [{node}]")
                 
-                # JUGE CONSENSUS
                 final_output = await ask_juge_consensus(prompt, expert_responses)
                 
                 print("\n✨ [MAIA SYNTHÈSE FINALE] :")
