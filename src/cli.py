@@ -2,14 +2,15 @@ import os
 import asyncio
 import httpx
 from src.routing import route_to_peer
-from src.vote import vote_best_answer
+
+PEERS_IP = os.getenv("PEERS_IP", "")
 
 async def start_cli():
     print("="*60)
     print("      M.A.I.A. - Cli Interface      ")
     print("="*60)
     
-    peers = [ip.strip() for ip in os.getenv("MAIA_PEER_NODES", "").split(",") if ip]
+    peers = [ip.strip() for ip in PEERS_IP.split(",") if ip]
     print(f"[Réseau] {len(peers)} noeuds d'inférence configurés.\n")
     
     expert_roles = ["code", "maths", "writing"]

@@ -4,20 +4,25 @@ from fastapi.security import APIKeyHeader
 from pydantic import BaseModel
 import httpx
 import uvicorn
+from dotenv import load_dotenv
+
+load_dotenv()
 
 app = FastAPI(title="MAIA Agent Node")
 
-API_KEY_NAME = "X-MAIA-Token"
+API_KEY_NAME = "MAIA-Token"
 api_key_header = APIKeyHeader(name=API_KEY_NAME, auto_error=True)
 NODE_NAME = os.getenv("NODE_NAME")
 NODE_PORT = os.getenv("NODE_PORT", 8000)
+MAIA_KEY = os.getenv("MAIA_KEY")
+OLLAMA_URL = os.getenv('OLLAMA_URL', 'http://localhost:11434')
 
 class ComputeRequest(BaseModel):
     prompt: str
     expert_type: str
 
 async def verify_token(api_key: str = Depends(api_key_header)):
-    if api_key != os.getenv("MAIA_SECRET_KEY"):
+    if api_key != MAIA_KEY:
         raise HTTPException(status_code=403, detail="Clé MAIA invalide")
     return api_key
 
@@ -33,13 +38,13 @@ async def process_compute(request: ComputeRequest, token: str = Depends(verify_t
     async with httpx.AsyncClient() as client:
         try:
             ollama_payload = {
-                "model": "llama3:8b",
+                "model": "llama3.2:3b",
                 "prompt": request.prompt,
                 "system": system_prompt,
                 "stream": False
             }
             response = await client.post(
-                f"{os.getenv('OLLAMA_LOCAL_URL', 'http://localhost:11434')}/api/generate", 
+                f"{OLLAMA_URL}/api/generate", 
                 json=ollama_payload, 
                 timeout=60.0
             )

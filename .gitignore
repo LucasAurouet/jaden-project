@@ -3,3 +3,6 @@ venv/
 
 # Config
 networkconfig.json
+
+# Environment
+.env

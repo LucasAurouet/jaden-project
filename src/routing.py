@@ -4,7 +4,7 @@ import httpx
 MAIA_KEY = os.getenv("MAIA_KEY")
 
 async def route_to_peer(client: httpx.AsyncClient, peer_url: str, prompt: str, expert_type: str):
-    headers = {"X-MAIA-Token": MAIA_KEY}
+    headers = {"MAIA-Token": MAIA_KEY}
     payload = {"prompt": prompt, "expert_type": expert_type}
     
     try:
