@@ -1,12 +1,15 @@
 import os
 import httpx
+from dotenv import load_dotenv
+
+load_dotenv()
 
 MAIA_KEY = os.getenv("MAIA_KEY")
 
 async def route_to_peer(client: httpx.AsyncClient, peer_url: str, prompt: str, expert_type: str):
-    headers = {"MAIA-Token": MAIA_KEY}
+    headers = {"maia-token": MAIA_KEY}
     payload = {"prompt": prompt, "expert_type": expert_type}
-    
+
     try:
         response = await client.post(f"http://{peer_url}/v1/compute", json=payload, headers=headers, timeout=45.0)
         if response.status_code == 200:
@@ -14,4 +17,4 @@ async def route_to_peer(client: httpx.AsyncClient, peer_url: str, prompt: str, e
             return data.get("node"), data.get("response")
         return peer_url, f"Erreur Agent ({response.status_code})"
     except Exception as e:
-        return peer_url, f"Nœud injoignable ({e})"
+        return peer_url, f"Noeud injoignable ({e})"

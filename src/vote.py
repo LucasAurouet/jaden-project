@@ -28,4 +28,4 @@ async def vote_best_answer(prompt_original, expert_responses):
             }, timeout=60.0)
             return res.json().get("response")
         except Exception as e:
-            return f"Erreur critique du service Juge local : {e}"
+            return f"Erreur critique du service de vote local : {e}"

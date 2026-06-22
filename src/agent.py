@@ -10,8 +10,8 @@ load_dotenv()
 
 app = FastAPI(title="MAIA Agent Node")
 
-API_KEY_NAME = "MAIA-Token"
-api_key_header = APIKeyHeader(name=API_KEY_NAME, auto_error=True)
+API_KEY_NAME = "maia-token"
+api_key_header = APIKeyHeader(name=API_KEY_NAME, auto_error=False)
 NODE_NAME = os.getenv("NODE_NAME")
 NODE_PORT = os.getenv("NODE_PORT", 8000)
 MAIA_KEY = os.getenv("MAIA_KEY")
@@ -49,7 +49,7 @@ async def process_compute(request: ComputeRequest, token: str = Depends(verify_t
                 timeout=60.0
             )
             return {
-                "node": os.getenv("MAIA_NODE_NAME", "Unknown_Node"),
+                "node": NODE_NAME,
                 "expert": request.expert_type,
                 "response": response.json().get("response")
             }
