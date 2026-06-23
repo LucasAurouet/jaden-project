@@ -62,7 +62,7 @@ async def process_compute(request: ComputeRequest, token: str = Depends(verify_t
                 "expert": request.expert_type,
                 "response": ollama_output.get("response"),
                 "performance": {
-                    "vitesse_tokens_sec": round(ollama_output.get("total_duration", 0) / 1e9, 2),
+                    "tokens_sec": round(ollama_output.get("eval_count", 0) / ollama_output.get("total_duration", 0) / 1e9, 2),
                     "token_count": ollama_output.get("eval_count", 0),
                     "total_time": round(ollama_output.get("total_duration", 0) / 1e9, 2),
                     "loading_time": round(ollama_output.get("load_duration", 0) / 1e9, 2),
