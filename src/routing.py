@@ -13,8 +13,7 @@ async def route_to_peer(client: httpx.AsyncClient, peer_url: str, prompt: str, e
     try:
         response = await client.post(f"http://{peer_url}/v1/compute", json=payload, headers=headers, timeout=45.0)
         if response.status_code == 200:
-            data = response.json()
-            return data.get("node"), data.get("response")
+            return response.json()
         return peer_url, f"Erreur Agent ({response.status_code})"
     except Exception as e:
         return peer_url, f"Noeud injoignable ({e})"

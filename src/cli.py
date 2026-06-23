@@ -35,16 +35,33 @@ async def start_cli():
                     route_to_peer(client, url, prompt, expert_roles[i % len(expert_roles)]) 
                     for i, url in enumerate(peers)
                 ]
-                expert_responses = await asyncio.gather(*tasks, return_exceptions=True)
-                print(f"responses: {expert_responses}")
-                for node, _ in expert_responses:
-                    print(f" └─ [Récolte] Réponse reçue de [{node}]")
-                
-                final_output = await vote_best_answer(prompt, expert_responses)
-                
-                print("\n[MAIA SYNTHÈSE FINALE] :")
-                print(final_output)
-                print("-" * 60)
+                expert_outputs = await asyncio.gather(*tasks, return_exceptions=True)
+
+                valid_responses = []
+                for output in expert_outputs:
+                    if isinstance(output, Exception):
+                        print(f" └─ [Erreur Réseau] Un des nœuds est injoignable : {output}")
+                        continue
+                    
+                    node_name = output.get("node", "Agent Inconnu")
+                    expert_type = output.get("expert", "généraliste")
+                    response_text = output.get("response", "")
+                    performance = output.get("performance", {}) 
+
+                    print(f" └─ [Récolte] Réponse de [{node_name}] ({expert_type})")
+                    if telemetry:
+                        print(f"    └── ⏱️  {performance.get('vitesse_tokens_sec')} t/s | Latence Réseau: {telemetry.get('temps_reseau_overhead_sec')}s")
+
+                    valid_responses.append(output)
+
+                if valid_responses:
+                    final_output = await vote_best_answer(prompt, valid_responses)
+                    
+                    print("\n[MAIA SYNTHÈSE FINALE] :")
+                    print(final_output)
+                    print("-" * 60)
+                else:
+                    print("\n[Échec Total] Aucun agent n'a pu répondre.")
                 
             except KeyboardInterrupt:
                 break

@@ -4,18 +4,22 @@ import httpx
 OLLAMA_URL = os.getenv("OLLAMA_URL", "http://localhost:11434")
 
 def build_voting_prompt(prompt_original, expert_responses):
+
     context = ""
-    for node, text in expert_responses:
+    for data in expert_responses:
+        node = data.get("node")
+        expert = data.get("expert")
+        text = data.get("response")
         context += f"--- AVIS DE L'EXPERT [{node}] ---\n{text}\n\n"
         
-    prompt_vote = f"""
-    Tu es l'arbitre du système MAIA. Synthétise les réponses des experts pour répondre au prompt initial.
-    Élimine les hallucinations, garde la rigueur technique et fusionne le tout de manière fluide.
-    
-    PROMPT INITIAL : {prompt_original}
-    
-    {context}
-    """
+        prompt_vote = f"""
+        Tu es l'arbitre du système MAIA. Synthétise les réponses des experts pour répondre au prompt initial.
+        Élimine les hallucinations, garde la rigueur technique et fusionne le tout de manière fluide.
+        
+        PROMPT INITIAL : {prompt_original}
+        
+        {context}
+        """
 
     return prompt_vote
 
