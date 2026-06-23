@@ -50,7 +50,7 @@ async def process_compute(request: ComputeRequest, token: str = Depends(verify_t
             response = await client.post(
                 f"{OLLAMA_URL}/api/generate", 
                 json=ollama_payload, 
-                timeout=120.0
+                timeout=None
             )
 
             ollama_output = response.json()
@@ -62,7 +62,7 @@ async def process_compute(request: ComputeRequest, token: str = Depends(verify_t
                 "expert": request.expert_type,
                 "response": ollama_output.get("response"),
                 "performance": {
-                    "tokens_sec": round(ollama_output.get("eval_count", 0) / ollama_output.get("total_duration", 0) / 1e9, 2),
+                    "tokens_sec": round(ollama_output.get("eval_count", 0) / (ollama_output.get("eval_duration", 0) / 1e9), 2),
                     "token_count": ollama_output.get("eval_count", 0),
                     "total_time": round(ollama_output.get("total_duration", 0) / 1e9, 2),
                     "loading_time": round(ollama_output.get("load_duration", 0) / 1e9, 2),
@@ -74,7 +74,7 @@ async def process_compute(request: ComputeRequest, token: str = Depends(verify_t
                     }
             }
         except Exception as e:
-            raise HTTPException(status_code=503, detail=f"Ollama local indisponible : {e}")
+            raise HTTPException(status_code=503, detail=f"Ollama local indisponible ({error_name})")
 
 def start_agent():
     port = int(NODE_PORT)
