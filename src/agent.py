@@ -5,6 +5,8 @@ from pydantic import BaseModel
 import httpx
 import uvicorn
 from dotenv import load_dotenv
+import psutil
+import time
 
 load_dotenv()
 
@@ -35,6 +37,7 @@ async def process_compute(request: ComputeRequest, token: str = Depends(verify_t
     }
     system_prompt = expert_registry.get(request.expert_type, "Tu es un assistant généraliste.")
     
+    t0 = time.time()
     async with httpx.AsyncClient() as client:
         try:
             ollama_payload = {
@@ -43,15 +46,32 @@ async def process_compute(request: ComputeRequest, token: str = Depends(verify_t
                 "system": system_prompt,
                 "stream": False
             }
+
             response = await client.post(
                 f"{OLLAMA_URL}/api/generate", 
                 json=ollama_payload, 
                 timeout=120.0
             )
+
+            ollama_output = response.json()
+
+            httpx_time = time.time() - t0
+
             return {
                 "node": NODE_NAME,
                 "expert": request.expert_type,
-                "response": response.json().get("response")
+                "response": ollama_output.get("response"),
+                "performance": {
+                    "vitesse_tokens_sec": round(ollama_output.get("total_duration", 0) / 1e9, 2),
+                    "token_count": ollama_output.get("eval_count", 0),
+                    "total_time": round(ollama_output.get("total_duration", 0) / 1e9, 2),
+                    "loading_time": round(ollama_output.get("load_duration", 0) / 1e9, 2),
+                    "ttft": round(ollama_output.get("prompt_eval_duration", 0) / 1e9, 2),
+                    "eval_time": round(ollama_output.get("eval_duration", 0) / 1e9, 2),
+                    "network_overhead": round(max(0, httpx_time - ollama_output.get("total_duration", 0)), 2),
+                    "cpu_usage": psutil.cpu_percent(interval=None),
+                    "ram_usage": psutil.virtual_memory().percent
+                    }
             }
         except Exception as e:
             raise HTTPException(status_code=503, detail=f"Ollama local indisponible : {e}")
