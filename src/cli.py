@@ -9,21 +9,18 @@ import sys
 load_dotenv()
 
 PEERS_IP = os.getenv("PEERS_IP", "")
+NODE_NAME = os.getenv("NODE_NAME", "Agent")
 
 async def consume_agent_stream(client, url, prompt, expert_type, valid_responses, perf_metrics):
     full_text = ""
-    node_name = "Agent"
 
-    # On consomme les événements envoyés par routing.py
     async for event in route_to_peer(client, url, prompt, expert_type):
-        node_name = event.get("node", node_name)
-        
         if event["type"] == "text":
             text_chunk = event["content"]
             full_text += text_chunk
             
             # C'est le CLI qui gère le formatage visuel !
-            clean_text = text_chunk.replace('\n', f'\n[{node_name}] ')
+            clean_text = text_chunk.replace('\n', f'\n[{NODE_NAME}] ')
             sys.stdout.write(clean_text)
             sys.stdout.flush()
             
@@ -31,7 +28,7 @@ async def consume_agent_stream(client, url, prompt, expert_type, valid_responses
             perf = event["data"]
             # On enrichit la liste partagée des performances pour le tableau de fin
             perf_metrics.append({
-                "node": perf.get("node", node_name),
+                "node": perf.get("node", NODE_NAME),
                 "expert": expert_type,
                 "t_s": f"{perf.get('tokens_sec', 0):.1f} t/s",
                 "count": f"{perf.get('token_count', 0)} tkn",
@@ -44,12 +41,12 @@ async def consume_agent_stream(client, url, prompt, expert_type, valid_responses
             })
             
         elif event["type"] == "error":
-            print(f"\n[Échec] Noeud [{node_name}] ({expert_type}) -> {event['error']}")
-            return # On s'arrête là pour ce nœud
+            print(f"\n[Échec] Noeud [{NODE_NAME}] ({expert_type}) -> {event['error']}")
+            return
 
     # Une fois le stream fini avec succès, on enregistre la réponse globale pour le vote
     valid_responses.append({
-        "node": node_name,
+        "node": NODE_NAME,
         "expert": expert_type,
         "response": full_text
     })
@@ -63,10 +60,12 @@ async def start_cli():
         while True:
             try:
                 prompt = input("\nMAIA App > ")
-                if prompt.lower() == 'q': break
-                if not prompt.strip(): continue
+                if prompt.lower() == 'q': 
+                    break
+                if not prompt.strip(): 
+                    continue
                 
-                print("[Routeur] Démarrage du streaming des agents...\n" + "-"*50)
+                print("[Routeur] Démarrage des agents...\n" + "-"*50)
                 
                 valid_responses = []
                 perf_metrics = []
@@ -82,7 +81,7 @@ async def start_cli():
                 # --- ICI : Affichage de ton Tableau de bord (Inchangé) ---
                 if perf_metrics:
                     print("\n" + "="*115)
-                    print(f"{'NŒUD':<13} | {'EXPERT':<10} | {'VITESSE':<9} | {'VOLUME':<8} | {'TTFT':<7} | {'LOAD':<6} | {'RÉSEAU':<7} | {'TOTAL':<6} | {'MATÉRIEL':<25}")
+                    print(f"{'NOEUD':<13} | {'EXPERT':<10} | {'VITESSE':<9} | {'VOLUME':<8} | {'TTFT':<7} | {'LOAD':<6} | {'RÉSEAU':<7} | {'TOTAL':<6} | {'MATÉRIEL':<25}")
                     print("-"*115)
                     for p in perf_metrics:
                         print(f"{p['node']:<13} | {p['expert']:<10} | {p['t_s']:<9} | {p['count']:<8} | {p['ttft']:<7} | {p['load']:<6} | {p['net']:<7} | {p['total']:<6} | {p['hardware']:<25}")
