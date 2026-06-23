@@ -74,7 +74,7 @@ async def process_compute(request: ComputeRequest, token: str = Depends(verify_t
                     }
             }
         except Exception as e:
-            raise HTTPException(status_code=503, detail=f"Ollama local indisponible ({error_name})")
+            raise HTTPException(status_code=503, detail=f"Ollama local indisponible ({e})")
 
 def start_agent():
     port = int(NODE_PORT)
