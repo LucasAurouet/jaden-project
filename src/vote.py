@@ -27,7 +27,7 @@ async def vote_best_answer(prompt_original, expert_responses):
 
     prompt_vote = build_voting_prompt(prompt_original, expert_responses)
     
-    async with httpx.AsyncClient() as client:
+    async with httpx.AsyncClient(timeout=None) as client:
         try:
             res = await client.post(f"{OLLAMA_URL}/api/generate", json={
                 "model": "llama3.2:3b",

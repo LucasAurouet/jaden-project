@@ -7,6 +7,8 @@ import uvicorn
 from dotenv import load_dotenv
 import psutil
 import time
+import json
+from fastapi.responses import StreamingResponse
 
 load_dotenv()
 
@@ -36,45 +38,49 @@ async def process_compute(request: ComputeRequest, token: str = Depends(verify_t
         "writing": "Tu es un rédacteur professionnel. Rédige de manière claire."
     }
     system_prompt = expert_registry.get(request.expert_type, "Tu es un assistant généraliste.")
+
+    async def event_generator():    
+        t0 = time.time()
+        async with httpx.AsyncClient(timeout=None) as client:
+            try:
+                ollama_payload = {
+                    "model": "llama3.2:3b",
+                    "prompt": request.prompt,
+                    "system": system_prompt,
+                    "stream": True
+                }
+                async with client.stream("POST", f"{OLLAMA_URL}/api/generate", json=ollama_payload, timeout=None) as response:
+                    response.raise_for_status()
+
+                    async for line in response.aiter_lines():
+                        if line:
+                            chunk = json.loads(line)
+                            if not chunk.get("done", False):
+                                yield chunk.get("response", "")
+                            else:
+                                httpx_time = time.time() - t0
+                                perf_metrics =  {
+                                    "node": NODE_NAME,
+                                    "expert": request.expert_type,
+                                    "response": chunk.get("response"),
+                                    "performance": {
+                                        "tokens_sec": round(chunk.get("eval_count", 0) / (chunk.get("eval_duration", 0) / 1e9), 2),
+                                        "token_count": chunk.get("eval_count", 0),
+                                        "total_time": round(chunk.get("total_duration", 0) / 1e9, 2),
+                                        "loading_time": round(chunk.get("load_duration", 0) / 1e9, 2),
+                                        "ttft": round(chunk.get("prompt_eval_duration", 0) / 1e9, 2),
+                                        "eval_time": round(chunk.get("eval_duration", 0) / 1e9, 2),
+                                        "network_overhead": round(max(0, httpx_time - chunk.get("total_duration", 0)), 2),
+                                        "cpu_usage": psutil.cpu_percent(interval=None),
+                                        "ram_usage": psutil.virtual_memory().percent
+                                        }
+                                }
+                                yield f"\n|||{json.dumps(perf_metrics)}|||"
+            
+            except Exception as e:
+                raise HTTPException(status_code=503, detail=f"Ollama local indisponible ({e})")
     
-    t0 = time.time()
-    async with httpx.AsyncClient() as client:
-        try:
-            ollama_payload = {
-                "model": "llama3.2:3b",
-                "prompt": request.prompt,
-                "system": system_prompt,
-                "stream": False
-            }
-
-            response = await client.post(
-                f"{OLLAMA_URL}/api/generate", 
-                json=ollama_payload, 
-                timeout=None
-            )
-
-            ollama_output = response.json()
-
-            httpx_time = time.time() - t0
-
-            return {
-                "node": NODE_NAME,
-                "expert": request.expert_type,
-                "response": ollama_output.get("response"),
-                "performance": {
-                    "tokens_sec": round(ollama_output.get("eval_count", 0) / (ollama_output.get("eval_duration", 0) / 1e9), 2),
-                    "token_count": ollama_output.get("eval_count", 0),
-                    "total_time": round(ollama_output.get("total_duration", 0) / 1e9, 2),
-                    "loading_time": round(ollama_output.get("load_duration", 0) / 1e9, 2),
-                    "ttft": round(ollama_output.get("prompt_eval_duration", 0) / 1e9, 2),
-                    "eval_time": round(ollama_output.get("eval_duration", 0) / 1e9, 2),
-                    "network_overhead": round(max(0, httpx_time - ollama_output.get("total_duration", 0)), 2),
-                    "cpu_usage": psutil.cpu_percent(interval=None),
-                    "ram_usage": psutil.virtual_memory().percent
-                    }
-            }
-        except Exception as e:
-            raise HTTPException(status_code=503, detail=f"Ollama local indisponible ({e})")
+    return StreamingResponse(event_generator(), media_type="text/plain")
 
 def start_agent():
     port = int(NODE_PORT)
