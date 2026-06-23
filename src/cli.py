@@ -58,25 +58,25 @@ async def start_cli():
                     valid_responses.append(output)
 
                     if perf:
-                            perf_metrics.append({
-                                "node": node_name,
-                                "expert": expert_type,
-                                "t_s": f"{perf.get('tokens_sec', 0):.1f} t/s",
-                                "count": f"{perf.get('token_count', 0)} tkn",
-                                "ttft": f"{perf.get('ttft', 0):.2f}s",
-                                "load": f"{perf.get('loading_time', 0):.1f}s",
-                                "net": f"{perf.get('network_overhead', 0):.2f}s",
-                                "total": f"{perf.get('total_time', 0):.1f}s",
-                                "hardware": f"C:{perf.get('cpu_usage', 0)}% R:{perf.get('ram_usage', 0)}%"
-                            })
+                        perf_metrics.append({
+                            "node": node_name,
+                            "expert": expert_type,
+                            "t_s": f"{perf.get('tokens_sec', 0):.1f} t/s",
+                            "count": f"{perf.get('token_count', 0)} tkn",
+                            "ttft": f"{perf.get('ttft', 0):.2f}s",
+                            "load": f"{perf.get('loading_time', 0):.1f}s",
+                            "net": f"{perf.get('network_overhead', 0):.2f}s",
+                            "total": f"{perf.get('total_time', 0):.1f}s",
+                            "hardware": f"C:{perf.get('cpu_usage', 0)}% R:{perf.get('ram_usage', 0)}%"
+                        })
 
-                    if perf_metrics:
-                        print("\n" + "="*105)
-                        print(f"{'NŒUD':<13} | {'EXPERT':<10} | {'VITESSE':<9} | {'VOLUME':<8} | {'TTFT':<7} | {'LOAD':<6} | {'RÉSEAU':<7} | {'TOTAL':<6} | {'MATÉRIEL':<15}")
-                        print("-"*105)
-                        for p in perf_metrics:
-                            print(f"{p['node']:<13} | {p['expert']:<10} | {p['t_s']:<9} | {p['count']:<8} | {p['ttft']:<7} | {p['load']:<6} | {p['net']:<7} | {p['total']:<6} | {p['hardware']:<15}")
-                        print("="*105 + "\n")
+                if perf_metrics:
+                    print("\n" + "="*105)
+                    print(f"{'NŒUD':<13} | {'EXPERT':<10} | {'VITESSE':<9} | {'VOLUME':<8} | {'TTFT':<7} | {'LOAD':<6} | {'RÉSEAU':<7} | {'TOTAL':<6} | {'MATÉRIEL':<15}")
+                    print("-"*105)
+                    for p in perf_metrics:
+                        print(f"{p['node']:<13} | {p['expert']:<10} | {p['t_s']:<9} | {p['count']:<8} | {p['ttft']:<7} | {p['load']:<6} | {p['net']:<7} | {p['total']:<6} | {p['hardware']:<15}")
+                    print("="*105 + "\n")
 
                 if valid_responses:
                     final_output = await vote_best_answer(prompt, valid_responses)
