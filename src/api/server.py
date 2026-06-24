@@ -1,8 +1,3 @@
-"""
-Responsabilité unique : définir les routes HTTP et l'authentification.
-Aucun appel direct à Ollama, psutil ou logique métier ici.
-"""
-
 import json
 
 from fastapi import FastAPI, HTTPException, Depends

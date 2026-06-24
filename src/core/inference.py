@@ -1,7 +1,3 @@
-"""
-Responsabilité unique : toutes les interactions avec l'API Ollama locale.
-Ni FastAPI, ni logique métier, ni affichage.
-"""
 
 import json
 import time
@@ -15,12 +11,12 @@ from src.core.metrics import parse_ollama_metrics
 
 
 class TextChunk(TypedDict):
-    type: str   # "text"
+    type: str 
     data: str
 
 
 class MetricsChunk(TypedDict):
-    type: str   # "metrics"
+    type: str  
     data: dict
 
 
@@ -31,12 +27,7 @@ async def stream_inference(
     prompt: str,
     expert_type: str,
 ) -> AsyncIterator[InferenceEvent]:
-    """
-    Générateur asynchrone : yield des TextChunk pendant l'inférence,
-    puis un unique MetricsChunk à la fin.
-
-    Lève une exception si Ollama est indisponible.
-    """
+    
     system_prompt = get_system_prompt(expert_type)
     payload = {
         "model":  OLLAMA_MODEL,
@@ -63,9 +54,6 @@ async def stream_inference(
 
 
 async def generate(prompt: str) -> str:
-    """
-    Appel Ollama non-streamé. Utilisé par le service de vote.
-    """
     async with httpx.AsyncClient(timeout=None) as client:
         res = await client.post(
             f"{OLLAMA_URL}/api/generate",

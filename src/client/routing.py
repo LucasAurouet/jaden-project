@@ -1,9 +1,3 @@
-"""
-Responsabilité unique : ouvrir un stream SSE vers un peer et émettre des
-événements typés. Zéro print, zéro logique métier.
-Parser SSE minimal sur httpx brut — pas de dépendance httpx-sse.
-"""
-
 import json
 from typing import AsyncIterator
 
@@ -39,11 +33,9 @@ async def route_to_peer(
             response.raise_for_status()
 
             event_type = "text"
-            data_buf = [] # Utiliser une liste est plus propre pour accumuler du multi-lignes data
+            data_buf = []
 
-            # httpx reconstruit les lignes proprement à notre place
             async for line in response.aiter_lines():
-                # On ignore les commentaires SSE (: ping)
                 if line.startswith(":"):
                     continue
 
@@ -54,12 +46,10 @@ async def route_to_peer(
                     raw_data = line.removeprefix("data:")
                     data_buf.append(raw_data[1:] if raw_data.startswith(" ") else raw_data)
                 elif line == "":
-                    # Fin du bloc d'événement SSE
                     full_data = "\n".join(data_buf)
                     for event in _dispatch(event_type, full_data, node_name):
                         yield event
                     
-                    # Reset pour le prochain événement
                     event_type = "text"
                     data_buf = []
 

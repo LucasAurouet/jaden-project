@@ -74,8 +74,8 @@ async def start() -> None:
                 display.print_perf_table(perf_summaries)
 
                 if valid_responses:
-                    answer = await vote_best_answer(prompt, valid_responses)
-                    display.print_final_answer(answer)
+                    async for chunk in vote_best_answer(prompt, valid_responses):
+                        display.stream_text(chunk, "VOTE")
 
             except KeyboardInterrupt:
                 break

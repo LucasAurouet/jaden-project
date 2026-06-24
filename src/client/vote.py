@@ -1,8 +1,3 @@
-"""
-Responsabilité unique : construire le prompt de vote et appeler l'inférence.
-Aucun appel httpx direct — on passe par core.inference.
-"""
-
 from src.schemas import ExpertResponse
 from src.core.inference import generate, stream_inference
 
@@ -25,9 +20,12 @@ def _build_voting_prompt(original_prompt: str, responses: list[ExpertResponse]) 
 async def vote_best_answer(
     original_prompt: str,
     responses: list[ExpertResponse],
-) -> str:
+) -> AsyncIterator[str]:
     prompt = _build_voting_prompt(original_prompt, responses)
     try:
-        return await stream_inference(prompt, "writing")
+        async for event in stream_inference(prompt, "writing"):
+            if event["type"] == "text":
+                yield event["data"]
     except Exception as e:
-        return f"Erreur critique du service de vote : {type(e).__name__} : {e}"
+        yield f"Erreur critique du service de vote : {type(e).__name__} : {e}"
+    
