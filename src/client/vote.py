@@ -4,7 +4,7 @@ Aucun appel httpx direct — on passe par core.inference.
 """
 
 from src.schemas import ExpertResponse
-from src.core.inference import generate
+from src.core.inference import generate, stream_inference
 
 
 def _build_voting_prompt(original_prompt: str, responses: list[ExpertResponse]) -> str:
@@ -28,6 +28,6 @@ async def vote_best_answer(
 ) -> str:
     prompt = _build_voting_prompt(original_prompt, responses)
     try:
-        return await generate(prompt)
+        return await stream_inference(prompt, "writing")
     except Exception as e:
         return f"Erreur critique du service de vote : {type(e).__name__} : {e}"

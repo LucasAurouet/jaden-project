@@ -23,8 +23,7 @@ async def route_to_peer(
     node_name: str,
 ) -> AsyncIterator[StreamEvent]:
     """
-    Générateur asynchrone pur.
-    Yield : TextEvent | MetricsEvent | ErrorEvent
+    Générateur asynchrone pur utilisant aiter_lines().
     """
     payload = {"prompt": prompt, "expert_type": expert_type}
     headers = {"maia-token": MAIA_KEY}
@@ -40,22 +39,32 @@ async def route_to_peer(
             response.raise_for_status()
 
             event_type = "text"
-            data_buf = ""
+            data_buf = [] # Utiliser une liste est plus propre pour accumuler du multi-lignes data
 
+            # httpx reconstruit les lignes proprement à notre place
             async for line in response.aiter_lines():
+                # On ignore les commentaires SSE (: ping)
+                if line.startswith(":"):
+                    continue
+
                 if line.startswith("event:"):
-                    event_type = line.removeprefix("event:").strip()
+                    raw_event = line.removeprefix("event:")
+                    event_type = raw_event[1:] if raw_event.startswith(" ") else raw_event
                 elif line.startswith("data:"):
-                    data_buf = line.removeprefix("data:").strip()
-                elif line == "":  # ligne vide = événement complet
-                    for event in _dispatch(event_type, data_buf, node_name):
+                    raw_data = line.removeprefix("data:")
+                    data_buf.append(raw_data[1:] if raw_data.startswith(" ") else raw_data)
+                elif line == "":
+                    # Fin du bloc d'événement SSE
+                    full_data = "\n".join(data_buf)
+                    for event in _dispatch(event_type, full_data, node_name):
                         yield event
+                    
+                    # Reset pour le prochain événement
                     event_type = "text"
-                    data_buf = ""
+                    data_buf = []
 
     except Exception as e:
         yield ErrorEvent(node=node_name, error=str(e))
-
 
 def _dispatch(event_type: str, data: str, node_name: str) -> list[StreamEvent]:
     if event_type == "text":
