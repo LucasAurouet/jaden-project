@@ -29,7 +29,7 @@ async def _consume_peer(
 
     async for event in route_to_peer(client, url, prompt, expert_type, NODE_NAME):
         if event.type == "text":
-            display.stream_text(event.content, NODE_NAME)
+            display.stream_text(event.content, url)
             full_text += event.content
 
         elif event.type == "metrics":

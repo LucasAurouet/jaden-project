@@ -9,10 +9,6 @@ from src.schemas import PerfSummary
 
 
 def parse_ollama_metrics(chunk: dict, node_name: str, expert_type: str, t0: float) -> dict:
-    """
-    Reçoit le chunk Ollama avec done=True et le temps réseau t0.
-    Retourne un dict de métriques normalisé.
-    """
     httpx_time = time.time() - t0
     total_dur = chunk.get("total_duration", 0)
     eval_dur  = chunk.get("eval_duration", 0)
@@ -36,8 +32,7 @@ def parse_ollama_metrics(chunk: dict, node_name: str, expert_type: str, t0: floa
 
 
 def to_perf_summary(perf: dict, expert_type: str) -> PerfSummary:
-    """Convertit un dict de métriques brut en PerfSummary affichable."""
-    p = perf.get("performance", perf)  # accepte les deux formes
+    p = perf.get("performance", perf)
     gpu_str = (
         f" G:{p['gpu_usage']}% V:{p['gpu_ram']}%"
         if "gpu_usage" in p else ""

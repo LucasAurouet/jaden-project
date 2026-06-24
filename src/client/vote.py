@@ -1,5 +1,6 @@
 from src.schemas import ExpertResponse
 from src.core.inference import generate, stream_inference
+from typing import AsyncIterator
 
 
 def _build_voting_prompt(original_prompt: str, responses: list[ExpertResponse]) -> str:
