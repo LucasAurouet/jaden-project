@@ -1,6 +1,7 @@
 from src.schemas import ExpertResponse
 from src.core.inference import generate, stream_inference
 from typing import AsyncIterator
+from src.schemas import TextEvent, ErrorEvent
 
 
 def _build_voting_prompt(original_prompt: str, responses: list[ExpertResponse]) -> str:
@@ -26,7 +27,7 @@ async def vote_best_answer(
     try:
         async for event in stream_inference(prompt, "writing"):
             if event["type"] == "text":
-                yield event["data"]
+                yield TextEvent(node="VOTE_ARBITRE", content=event["data"])
     except Exception as e:
-        yield f"Erreur critique du service de vote : {type(e).__name__} : {e}"
+        yield ErrorEvent(node="VOTE_ARBITRE", error=f"Erreur critique : {e}")
     

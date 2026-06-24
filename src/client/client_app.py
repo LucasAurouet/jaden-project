@@ -44,19 +44,11 @@ async def _consume_peer(
 
 
 async def run_query(prompt: str) -> AsyncIterator[TextEvent | MetricsEvent | ErrorEvent]:
-    """
-    Point d'entrée principal. Yield tous les événements dans l'ordre :
-    1. Événements des peers (text, metrics, error) en parallèle
-    2. Événements du vote (text, metrics, error)
-
-    Le consommateur décide quoi faire de chaque événement.
-    """
     async with httpx.AsyncClient(timeout=None) as client:
         valid_responses: list[ExpertResponse] = []
         perf_summaries: list[PerfSummary] = []
         queue: asyncio.Queue = asyncio.Queue()
 
-        # Lance tous les peers en parallèle, ils poussent dans la queue
         tasks = [
             asyncio.create_task(
                 _consume_peer(client, url, i, prompt, valid_responses, perf_summaries, queue)
@@ -64,7 +56,6 @@ async def run_query(prompt: str) -> AsyncIterator[TextEvent | MetricsEvent | Err
             for i, url in enumerate(PEERS_IP)
         ]
 
-        # Yield les événements au fur et à mesure qu'ils arrivent
         while tasks:
             done = [t for t in tasks if t.done()]
             for t in done:
@@ -74,17 +65,14 @@ async def run_query(prompt: str) -> AsyncIterator[TextEvent | MetricsEvent | Err
             if tasks:
                 await asyncio.sleep(0.01)
 
-        # Vide la queue restante
         while not queue.empty():
             yield await queue.get()
 
-        # Yield un sentinel pour signaler la fin des peers
         yield TextEvent(node="SYSTEM", content="\n\n---PEERS_DONE---\n\n")
 
         if not valid_responses:
             return
-
-        # Phase vote
+        
         async for event in vote_best_answer(prompt, valid_responses):
             if event.type == "metrics":
                 perf = event.data.get("performance", event.data)
@@ -92,6 +80,5 @@ async def run_query(prompt: str) -> AsyncIterator[TextEvent | MetricsEvent | Err
                 perf_summaries.append(summary)
             yield event
 
-        # Yield les métriques finales consolidées
         for summary in perf_summaries:
             yield MetricsEvent(node=summary.node, data=summary.dict())

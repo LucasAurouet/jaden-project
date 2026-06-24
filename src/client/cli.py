@@ -32,7 +32,6 @@ async def start_cli() -> None:
                         display.stream_text(event.content, event.node)
 
                 elif event.type == "metrics":
-                    # Métriques finales consolidées envoyées par l'orchestrateur
                     if "t_s" in event.data:
                         perf_summaries.append(PerfSummary(**event.data))
 
