@@ -7,9 +7,6 @@ import time
 import psutil
 from src.schemas import PerfSummary
 
-# Séparateur de protocole stream MAIA
-STREAM_SEPARATOR = "|||"
-
 
 def parse_ollama_metrics(chunk: dict, node_name: str, expert_type: str, t0: float) -> dict:
     """

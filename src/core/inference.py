@@ -5,22 +5,35 @@ Ni FastAPI, ni logique métier, ni affichage.
 
 import json
 import time
-from typing import AsyncIterator
+from typing import AsyncIterator, TypedDict
 
 import httpx
 
 from config import OLLAMA_URL, OLLAMA_MODEL, NODE_NAME
 from src.core.experts import get_system_prompt
-from src.core.metrics import parse_ollama_metrics, STREAM_SEPARATOR
+from src.core.metrics import parse_ollama_metrics
+
+
+class TextChunk(TypedDict):
+    type: str   # "text"
+    data: str
+
+
+class MetricsChunk(TypedDict):
+    type: str   # "metrics"
+    data: dict
+
+
+InferenceEvent = TextChunk | MetricsChunk
 
 
 async def stream_inference(
     prompt: str,
     expert_type: str,
-) -> AsyncIterator[str]:
+) -> AsyncIterator[InferenceEvent]:
     """
-    Générateur asynchrone : yield des chunks texte, puis yield la payload
-    métriques encapsulée dans le séparateur MAIA.
+    Générateur asynchrone : yield des TextChunk pendant l'inférence,
+    puis un unique MetricsChunk à la fin.
 
     Lève une exception si Ollama est indisponible.
     """
@@ -43,10 +56,10 @@ async def stream_inference(
                     continue
                 chunk = json.loads(line)
                 if not chunk.get("done", False):
-                    yield chunk.get("response", "")
+                    yield {"type": "text", "data": chunk.get("response", "")}
                 else:
                     metrics = parse_ollama_metrics(chunk, NODE_NAME, expert_type, t0)
-                    yield f"{STREAM_SEPARATOR}{json.dumps(metrics)}{STREAM_SEPARATOR}"
+                    yield {"type": "metrics", "data": metrics}
 
 
 async def generate(prompt: str) -> str:

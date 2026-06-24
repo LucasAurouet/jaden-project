@@ -1,6 +1,7 @@
 """
-Responsabilité unique : ouvrir un stream HTTP vers un peer et émettre des
+Responsabilité unique : ouvrir un stream SSE vers un peer et émettre des
 événements typés. Zéro print, zéro logique métier.
+Parser SSE minimal sur httpx brut — pas de dépendance httpx-sse.
 """
 
 import json
@@ -9,7 +10,6 @@ from typing import AsyncIterator
 import httpx
 
 from config import MAIA_KEY
-from src.core.metrics import STREAM_SEPARATOR
 from src.schemas import TextEvent, MetricsEvent, ErrorEvent
 
 StreamEvent = TextEvent | MetricsEvent | ErrorEvent
@@ -38,36 +38,33 @@ async def route_to_peer(
             timeout=None,
         ) as response:
             response.raise_for_status()
-            async for chunk in response.aiter_text():
-                if not chunk:
-                    continue
-                yield from _parse_chunk(chunk, node_name)
+
+            event_type = "text"
+            data_buf = ""
+
+            async for line in response.aiter_lines():
+                if line.startswith("event:"):
+                    event_type = line.removeprefix("event:").strip()
+                elif line.startswith("data:"):
+                    data_buf = line.removeprefix("data:").strip()
+                elif line == "":  # ligne vide = événement complet
+                    for event in _dispatch(event_type, data_buf, node_name):
+                        yield event
+                    event_type = "text"
+                    data_buf = ""
 
     except Exception as e:
         yield ErrorEvent(node=node_name, error=str(e))
 
 
-def _parse_chunk(chunk: str, node_name: str) -> list[StreamEvent]:
-    """
-    Parse un chunk brut du stream MAIA.
-    Le protocole : texte normal OU  |||{json}|||  en fin de stream.
-    """
-    events: list[StreamEvent] = []
-
-    if STREAM_SEPARATOR not in chunk:
-        events.append(TextEvent(node=node_name, content=chunk))
-        return events
-
-    parts = chunk.split(STREAM_SEPARATOR)
-    # parts = [texte_avant, json_metrics, texte_après (vide en pratique)]
-    if parts[0].strip():
-        events.append(TextEvent(node=node_name, content=parts[0]))
-
-    if len(parts) >= 2 and parts[1].strip():
+def _dispatch(event_type: str, data: str, node_name: str) -> list[StreamEvent]:
+    if event_type == "text":
+        return [TextEvent(node=node_name, content=data)]
+    if event_type == "metrics":
         try:
-            data = json.loads(parts[1])
-            events.append(MetricsEvent(node=node_name, data=data))
+            return [MetricsEvent(node=node_name, data=json.loads(data))]
         except json.JSONDecodeError:
-            pass  # chunk corrompu : on ignore silencieusement
-
-    return events
+            return []
+    if event_type == "error":
+        return [ErrorEvent(node=node_name, error=data)]
+    return []

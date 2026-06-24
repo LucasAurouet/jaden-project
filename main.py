@@ -15,8 +15,8 @@ if __name__ == "__main__":
         uvicorn.run(app, host="0.0.0.0", port=NODE_PORT)
 
     elif mode == "client":
-        from src.client.orchestrator import run
-        asyncio.run(run())
+        from src.client.runner import start
+        asyncio.run(start())
 
     else:
         print(f"Usage: python main.py [server|client]")
