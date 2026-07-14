@@ -5,6 +5,12 @@ from config import MAIA_KEY, SERVER_PORT, SERVER_NAME
 from src.schemas import ComputeRequest
 from src.api.inference import run_inference
 from contextlib import asynccontextmanager
+from fastapi.staticfiles import StaticFiles
+from fastapi.responses import FileResponse
+import os
+
+static_path = os.path.join(os.path.dirname(__file__), "static")
+app.mount("/static", StaticFiles(directory=static_path), name="static")
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -46,3 +52,7 @@ async def compute(
 @app.get("/health")
 async def health():
     return {"status": "ok"}
+
+@app.get("/")
+async def read_index():
+    return FileResponse(os.path.join(static_path, "index.html"))
