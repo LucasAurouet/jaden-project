@@ -31,7 +31,7 @@ async def run_query(prompt, session_id: str = None) -> str:
             response.raise_for_status()
 
             data = response.json()
-            return data
+            return data.get("response", "[Erreur] Format de réponse invalide")
     except httpx.ConnectError:
         return f"[Erreur] Impossible de se connecter au serveur d'inférence ({SERVER_IP}). Vérifiez que le serveur est bien lancé et que l'IP est correcte."
     

@@ -48,8 +48,15 @@ async def compute(
     
     if not assistant_response.startswith("[Erreur]"):
         save_message(request.session_id, "assistant", assistant_response)
+        status_code = "success"
+    else:
+        status_code = "error"
         
-    return assistant_response
+    return {
+        "session_id": request.session_id,
+        "response": assistant_response,
+        "status": status_code
+    }
 
 @app.get("/health")
 async def health():

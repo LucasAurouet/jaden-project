@@ -32,7 +32,15 @@ async function sendMessage() {
         if (!response.ok) throw new Error(`Status: ${response.status}`);
         
         const data = await response.json();
-        appendMessage(data, "assistant");
+        console.log("Contrat respecté :", data); 
+
+        document.getElementById(loaderId).remove();
+
+        if (data.status === "success") {
+            appendMessage(data.response, "assistant");
+        } else {
+            appendMessage(`ERREUR_SERVEUR//: ${data.response}`, "assistant");
+        }
 
     } catch (error) {
         appendMessage(`SYSTEM_ERR//: IMPOSSIBLE_DE_CONTACTER_LE_SERVEUR (${error.message})`, "assistant");
