@@ -2,12 +2,13 @@ from fastapi import FastAPI, HTTPException, Depends
 from fastapi.security import APIKeyHeader
 from src.api.database import init_db, save_message, get_chat_history
 from config import MAIA_KEY, SERVER_PORT, SERVER_NAME
-from src.schemas import ComputeRequest
+from src.schemas import ComputeRequest, ComputeResponse
 from src.api.inference import run_inference
 from contextlib import asynccontextmanager
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
 import os
+from pydantic import ValidationError
 
 
 @asynccontextmanager
@@ -51,12 +52,20 @@ async def compute(
         status_code = "success"
     else:
         status_code = "error"
-        
-    return {
+
+    output_data = {
         "session_id": str(request.session_id),
         "response": str(assistant_response),
         "status": str(status_code)
     }
+
+    try:
+        ComputeResponse(**output_data)
+    except ValidationError as e:
+        print("❌ L'ERREUR DE VALIDATION EXACTE EST ICI :")
+        print(e.json()) 
+        
+    return output_data
 
 @app.get("/health")
 async def health():
