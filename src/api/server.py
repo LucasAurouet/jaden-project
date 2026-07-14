@@ -55,7 +55,7 @@ async def compute(
     return {
         "session_id": str(request.session_id),
         "response": assistant_response,
-        "status": status_code
+        "status": str(status_code)
     }
 
 @app.get("/health")
