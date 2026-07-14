@@ -17,18 +17,32 @@ def print_response(text: str) -> None:
     sys.stdout.flush()
 
 async def wait_animation():
-    frames = itertools.cycle([
-    '[=    ]', '[==   ]', '[ ===  ]', '[  === ]', 
-    '[   ==]', '[    =]', '[   ==]', '[  === ]', 
-    '[ ===  ]', '[==   ]'
-    ])
+    frames = [
+        '[=       ]',
+        '[==      ]',
+        '[===     ]',
+        '[ ===    ]',
+        '[  ===   ]',
+        '[   ===  ]',
+        '[    === ]',
+        '[     ===]',
+        '[      ==]',
+        '[       =]',
+        '[      ==]',
+        '[     ===]',
+        '[    === ]',
+        '[   ===  ]',
+        '[  ===   ]',
+        '[ ===    ]',
+        '[===     ]',
+        '[==      ]',
+    ]
 
     try:
-        while True:
-            f = next(frames)
-            sys.stdout.write(f'\r{f}')
+        for frame in itertools.cycle(frames):
+            sys.stdout.write(f'\r{frame}')
             sys.stdout.flush()
-            await asyncio.sleep(0.1)
+            await asyncio.sleep(0.08)
     except asyncio.CancelledError:
-        sys.stdout.write('\r' + ' ' * 20 + '\r')
+        sys.stdout.write('\r' + ' ' * len(frames[0]) + '\r')
         sys.stdout.flush()
