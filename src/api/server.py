@@ -53,7 +53,7 @@ async def compute(
         status_code = "error"
         
     return {
-        "session_id": request.session_id,
+        "session_id": str(request.session_id),
         "response": assistant_response,
         "status": status_code
     }
