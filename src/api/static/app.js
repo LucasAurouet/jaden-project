@@ -1,6 +1,6 @@
 const SESSION_ID = crypto.randomUUID();
 const API_URL = "/v1/compute";
-const MAIA_KEY = "mon-super-token-maia"; 
+const MAIA_KEY = "maia"; 
 
 const chatBox = document.getElementById("chat-box");
 const userInput = document.getElementById("user-input");
