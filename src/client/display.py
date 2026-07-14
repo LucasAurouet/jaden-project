@@ -1,6 +1,5 @@
 
 import sys
-from src.schemas import PerfSummary
 
 SEPARATOR = "=" * 60
 THIN_SEP  = "-" * 50
