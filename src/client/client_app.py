@@ -2,7 +2,7 @@ from config import SERVER_IP
 import httpx
 
 async def run_query(prompt):
-    url = f"{SERVER_IP}/v1/compute"
+    url = f"http://{SERVER_IP}/v1/compute"
     
     payload = {"prompt": prompt}
 
