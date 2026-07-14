@@ -38,7 +38,7 @@ async def _verify_token(api_key: str = Depends(_api_key_header)) -> str:
 async def compute(
     request: ComputeRequest,
     _token: str = Depends(_verify_token),
-) -> str:
+) -> ComputeResponse:
     
     save_message(request.session_id, "user", request.prompt)
     history = get_chat_history(request.session_id)
