@@ -13,8 +13,12 @@ async function sendMessage() {
     const text = userInput.value.trim();
     if (!text) return;
 
+    // 1. On affiche le message utilisateur
     appendMessage(text, "user");
     userInput.value = "";
+
+    // 2. On affiche l'indicateur de chargement et on récupère son ID unique
+    const currentLoaderId = appendMessage("CONNEXION_AU_NEURAL_NET...", "assistant");
 
     try {
         const response = await fetch(API_URL, {
@@ -34,23 +38,40 @@ async function sendMessage() {
         const data = await response.json();
         console.log("Contrat respecté :", data); 
 
-        document.getElementById(loaderId).remove();
+        // 3. On supprime l'indicateur de chargement
+        const loaderElement = document.getElementById(currentLoaderId);
+        if (loaderElement) {
+            loaderElement.remove();
+        }
 
+        // 4. On affiche la réponse avec le bon champ (.content)
         if (data.status === "success") {
-            appendMessage(data.response, "assistant");
+            appendMessage(data.content, "assistant");
         } else {
-            appendMessage(`ERREUR_SERVEUR//: ${data.response}`, "assistant");
+            appendMessage(`ERREUR_SERVEUR//: ${data.content}`, "assistant");
         }
 
     } catch (error) {
+        // En cas d'erreur, on nettoie quand même le loader s'il existe
+        const loaderElement = document.getElementById(currentLoaderId);
+        if (loaderElement) {
+            loaderElement.remove();
+        }
         appendMessage(`SYSTEM_ERR//: IMPOSSIBLE_DE_CONTACTER_LE_SERVEUR (${error.message})`, "assistant");
     }
 }
 
+// 🟢 Fonction améliorée pour générer des IDs uniques
 function appendMessage(text, sender) {
     const msgDiv = document.createElement("div");
+    const uniqueId = "msg-" + Date.now() + "-" + Math.random().toString(36).substr(2, 9);
+    
+    msgDiv.id = uniqueId;
     msgDiv.classList.add("message", sender);
     msgDiv.textContent = text;
+    
     chatBox.appendChild(msgDiv);
     chatBox.scrollTop = chatBox.scrollHeight;
+    
+    return uniqueId; // 🟢 Permet de récupérer l'ID pour pouvoir le supprimer plus tard
 }
