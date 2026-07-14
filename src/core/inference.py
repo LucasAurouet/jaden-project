@@ -7,7 +7,7 @@ async def run_inference(
 
     payload = {
         "messages": [
-            {"role": "assistant", "content":  "you are a helpful assistant"},
+            {"role": "system", "content":  "tu es un assistant développeur qui répond de manière concise et claire aux questions posées par l'utilisateur."},
             {"role": "user", "content": f"{prompt}"}
         ]
     }
