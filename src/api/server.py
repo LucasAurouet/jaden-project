@@ -21,7 +21,11 @@ async def compute(
     request: ComputeRequest,
     _token: str = Depends(_verify_token),
 ) -> str:
-    logging.info(f"Requête reçue : {request.prompt}")
+    logging.warning(f"Requête reçue : {request.prompt}")
     url = f"http://127.0.0.1:{SERVER_PORT}/v1/chat/completions"
 
-    return run_inference(url, request.prompt)
+    return await run_inference(request.prompt, url)
+
+@app.get("/health")
+async def health():
+    return {"status": "ok"}

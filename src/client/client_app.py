@@ -7,7 +7,7 @@ async def run_query(prompt):
     payload = {"prompt": prompt}
 
     try:
-        async with httpx.AsyncClient(timeout=60.0) as client:
+        async with httpx.AsyncClient(timeout=10.0) as client:
             response = await client.post(url, json=payload)
 
             response.raise_for_status()
@@ -15,10 +15,10 @@ async def run_query(prompt):
             data = response.json()
             return data
     except httpx.ConnectError:
-        return "[Erreur] Impossible de se connecter au serveur d'inférence. Vérifiez que le serveur est bien lancé et que l'IP est correcte."
+        return f"[Erreur] Impossible de se connecter au serveur d'inférence ({SERVER_IP}). Vérifiez que le serveur est bien lancé et que l'IP est correcte."
     
     except httpx.TimeoutException:
-        return "[Erreur] Le serveur d'inférence a mis trop de temps à répondre (Timeout)."
+        return f"[Erreur] Le serveur d'inférence ({SERVER_IP}) a mis trop de temps à répondre (Timeout)."
         
     except httpx.HTTPStatusError as e:
         return f"[Erreur HTTP {e.response.status_code}] Le serveur a renvoyé une erreur : {e.response.text}"
