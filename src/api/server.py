@@ -4,6 +4,7 @@ import logging
 from config import MAIA_KEY, SERVER_PORT, SERVER_NAME
 from src.schemas import ComputeRequest
 from src.core.inference import run_inference
+import uuid
 
 app = FastAPI(title="MAIA Server")
 
@@ -21,9 +22,17 @@ async def compute(
     request: ComputeRequest,
     _token: str = Depends(_verify_token),
 ) -> str:
-    url = f"http://127.0.0.1:8080/v1/chat/completions"
-
-    return await run_inference(request.prompt, url)
+    # On génère un ID unique par requête pour voir si c'est la même qui tourne
+    req_id = uuid.uuid4().hex[:6]
+    print(f"\n[FARTAPI - {req_id}] Reçu le prompt: '{request.prompt}'")
+    
+    url = "http://127.0.0.1:8080/v1/chat/completions"
+    print(f"[FASTAPI - {req_id}] Envoi de la requête à llama.cpp sur {url}...")
+    
+    res = await run_inference(request.prompt, url)
+    
+    print(f"[FASTAPI - {req_id}] Réponse reçue de run_inference: '{res[:30]}...'")
+    return res
 
 @app.get("/health")
 async def health():
