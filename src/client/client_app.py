@@ -1,10 +1,27 @@
 from config import SERVER_IP, SERVER_PORT, MAIA_KEY
 import httpx
+import uuid
 
-async def run_query(prompt):
+_CURRENT_SESSION_ID = str(uuid.uuid4())
+
+def get_current_session_id() -> str:
+    """Permet à l'UI de savoir quel est l'ID actuel si elle en a besoin (ex: pour l'afficher)."""
+    return _CURRENT_SESSION_ID
+
+def start_new_session() -> str:
+    """Force la création d'une nouvelle session (ex: bouton 'Nouveau Chat' dans l'UI)."""
+    global _CURRENT_SESSION_ID
+    _CURRENT_SESSION_ID = str(uuid.uuid4())
+    return _CURRENT_SESSION_ID
+
+async def run_query(prompt, session_id: str = None) -> str:
+    if session_id is None:
+            session_id = str(uuid.uuid4())
+
     url = f"http://{SERVER_IP}:{SERVER_PORT}/v1/compute"
     
-    payload = {"prompt": prompt}
+    payload = {"prompt": prompt,
+               "session_id": _CURRENT_SESSION_ID}
 
     headers = {"maia-token": MAIA_KEY} 
     try:

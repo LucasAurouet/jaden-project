@@ -8,15 +8,21 @@ async def start_cli() -> None:
 
     while True:
         try:
-            prompt = input("\nMAIA App > ").strip()
-            if prompt.lower() == "q":
+            user_input = input("\nMAIA App > ").strip()
+            if user_input.lower() == "q":
                 break
-            if not prompt:
+            if not user_input:
+                continue
+
+            if user_input.lower() == "/clear":
+                from client_app import start_new_session
+                start_new_session()
+                print("Nouvelle session démarrée")
                 continue
             
             wait_animation_task = asyncio.create_task(display.wait_animation())
                 
-            response = await run_query(prompt)
+            response = await run_query(user_input)
                 
             wait_animation_task.cancel()
             

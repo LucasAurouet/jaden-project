@@ -1,15 +1,13 @@
 import httpx
+from typing import List, Dict
 
 async def run_inference(
-    prompt: str,
+    messages : List[Dict[str, str]],
     url: str
 ) -> str:
 
     payload = {
-        "messages": [
-            {"role": "system", "content":  "tu es un assistant développeur qui répond de manière concise et claire aux questions posées par l'utilisateur."},
-            {"role": "user", "content": f"{prompt}"}
-        ]
+        "messages": messages
     }
 
     try:

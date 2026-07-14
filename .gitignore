@@ -13,5 +13,9 @@ venv/
 # Environment
 .env
 
+# Database
+src/server/data/maia.db
+
 # Misc
 .assets/
+
