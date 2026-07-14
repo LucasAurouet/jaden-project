@@ -54,7 +54,7 @@ async def compute(
         
     return {
         "session_id": str(request.session_id),
-        "response": assistant_response,
+        "response": str(assistant_response),
         "status": str(status_code)
     }
 
