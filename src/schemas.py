@@ -6,6 +6,6 @@ class ComputeRequest(BaseModel):
 
 class ComputeResponse(BaseModel):
     session_id: str
-    response: str
+    content: str
     status: str = "success"
 
