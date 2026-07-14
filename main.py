@@ -11,22 +11,13 @@ if __name__ == "__main__":
         from config import NODE_NAME, NODE_PORT
         import uvicorn
         from src.api.server import app
-        print(f"[Agent] Démarrage du noeud [{NODE_NAME}] sur le port {NODE_PORT}...")
+        print(f"Démarrage du server à l'adresse [{NODE_NAME}]")
         uvicorn.run(app, host="0.0.0.0", port=NODE_PORT)
 
     elif mode == "client":
-        interface = sys.argv[2] if len(sys.argv) > 2 else "cli"
-
-        if interface == "ui":
-            from src.client.ui import start_ui
-            start_ui()
-        elif interface == "cli":
-            from src.client.cli import start_cli
-            asyncio.run(start_cli())
-        else:
-            print(f"Usage: python main.py client [ui|cli]")
-            sys.exit(1)
+        from src.client.cli import start_cli
+        asyncio.run(start_cli())
 
     else:
-        print("Usage: python main.py [server|client [ui|cli]]")
+        print("Usage: python main.py [server|client]")
         sys.exit(1)

@@ -1,64 +1,38 @@
-
-import json
-import time
-from typing import AsyncIterator, TypedDict
-
 import httpx
 
-from config import OLLAMA_URL, OLLAMA_MODEL, NODE_NAME
-from src.core.experts import get_system_prompt
-from src.core.metrics import parse_ollama_metrics
-
-
-class TextChunk(TypedDict):
-    type: str 
-    data: str
-
-
-class MetricsChunk(TypedDict):
-    type: str  
-    data: dict
-
-
-InferenceEvent = TextChunk | MetricsChunk
-
-
-async def stream_inference(
+async def run_inference(
     prompt: str,
-    expert_type: str,
-) -> AsyncIterator[InferenceEvent]:
-    
-    system_prompt = get_system_prompt(expert_type)
+    url: str
+) -> str:
+
     payload = {
-        "model":  OLLAMA_MODEL,
-        "prompt": prompt,
-        "system": system_prompt,
-        "stream": True,
+        "messages": [
+            {"role": "assistant", "content":  "you are a helpful assistant"},
+            {"role": "user", "content": f"{prompt}"}
+        ]
     }
 
-    t0 = time.time()
-    async with httpx.AsyncClient(timeout=None) as client:
-        async with client.stream(
-            "POST", f"{OLLAMA_URL}/api/generate", json=payload, timeout=None
-        ) as response:
+    try:
+        async with httpx.AsyncClient(timeout=60.0) as client:
+            response = await client.post(url, json=payload)
+            
             response.raise_for_status()
-            async for line in response.aiter_lines():
-                if not line:
-                    continue
-                chunk = json.loads(line)
-                if not chunk.get("done", False):
-                    yield {"type": "text", "data": chunk.get("response", "")}
-                else:
-                    metrics = parse_ollama_metrics(chunk, NODE_NAME, expert_type, t0)
-                    yield {"type": "metrics", "data": metrics}
+            
+            data = response.json()
+            return data["choices"][0]["message"]["content"]
 
+    except httpx.ConnectError:
+        return "[Erreur] Impossible de se connecter au serveur llama.cpp. Vérifiez que le serveur est bien lancé et que le port est correct."
+        
+    except httpx.TimeoutException:
+        return "[Erreur] Le serveur llama.cpp a mis trop de temps à répondre (Timeout)."
+        
+    except httpx.HTTPStatusError as e:
+        return f"[Erreur HTTP {e.response.status_code}] Le serveur a renvoyé une erreur : {e.response.text}"
+        
+    except (KeyError, ValueError):
+        return "[Erreur] La réponse du serveur n'est pas au format attendu."
+        
+    except Exception as e:
+        return f"[Erreur inattendue] {str(e)}"
 
-async def generate(prompt: str) -> str:
-    async with httpx.AsyncClient(timeout=None) as client:
-        res = await client.post(
-            f"{OLLAMA_URL}/api/generate",
-            json={"model": OLLAMA_MODEL, "prompt": prompt, "stream": False},
-            timeout=None,
-        )
-        res.raise_for_status()
-        return res.json().get("response", "")

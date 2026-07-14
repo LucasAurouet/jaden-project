@@ -1,14 +1,11 @@
-import json
-
 from fastapi import FastAPI, HTTPException, Depends
 from fastapi.security import APIKeyHeader
-from sse_starlette.sse import EventSourceResponse
 
-from config import MAIA_KEY
+from config import MAIA_KEY, SERVER_PORT, SERVER_NAME
 from src.schemas import ComputeRequest
-from src.core.inference import stream_inference
+from src.core.inference import run_inference
 
-app = FastAPI(title="MAIA Agent Node")
+app = FastAPI(title="MAIA Server")
 
 _api_key_header = APIKeyHeader(name="maia-token", auto_error=False)
 
@@ -23,15 +20,8 @@ async def _verify_token(api_key: str = Depends(_api_key_header)) -> str:
 async def compute(
     request: ComputeRequest,
     _token: str = Depends(_verify_token),
-) -> EventSourceResponse:
-    async def _stream():
-        try:
-            async for event in stream_inference(request.prompt, request.expert_type):
-                if event["type"] == "text":
-                    yield {"event": "text", "data": event["data"]}
-                elif event["type"] == "metrics":
-                    yield {"event": "metrics", "data": json.dumps(event["data"])}
-        except Exception as e:
-            yield {"event": "error", "data": str(e)}
+) -> str:
+    
+    url = f"http://127.0.0.1:{SERVER_PORT}/v1/chat/completions"
 
-    return EventSourceResponse(_stream())
+    return run_inference(url, request.prompt)
