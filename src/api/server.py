@@ -9,8 +9,6 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
 import os
 
-static_path = os.path.join(os.path.dirname(__file__), "static")
-app.mount("/static", StaticFiles(directory=static_path), name="static")
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -21,9 +19,13 @@ async def lifespan(app: FastAPI):
     
     print("Fermeture du serveur")
 
+
 app = FastAPI(title="MAIA Server", lifespan=lifespan)
 
 _api_key_header = APIKeyHeader(name="maia-token", auto_error=False)
+
+static_path = os.path.join(os.path.dirname(__file__), "static")
+app.mount("/static", StaticFiles(directory=static_path), name="static")
 
 
 async def _verify_token(api_key: str = Depends(_api_key_header)) -> str:
