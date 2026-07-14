@@ -1,8 +1,8 @@
-from config import SERVER_IP, MAIA_KEY
+from config import SERVER_IP, SERVER_PORT, MAIA_KEY
 import httpx
 
 async def run_query(prompt):
-    url = f"http://{SERVER_IP}/v1/compute"
+    url = f"http://{SERVER_IP}:{SERVER_PORT}/v1/compute"
     
     payload = {"prompt": prompt}
 
