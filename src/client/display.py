@@ -17,7 +17,12 @@ def print_response(text: str) -> None:
     sys.stdout.flush()
 
 async def wait_animation():
-    frames = itertools.cycle(['|', '/', '-', '\\'])
+    frames = itertools.cycle([
+    '[=    ]', '[==   ]', '[ ===  ]', '[  === ]', 
+    '[   ==]', '[    =]', '[   ==]', '[  === ]', 
+    '[ ===  ]', '[==   ]'
+    ])
+
     try:
         while True:
             f = next(frames)
