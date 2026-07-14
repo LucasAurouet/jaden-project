@@ -1,6 +1,6 @@
 from fastapi import FastAPI, HTTPException, Depends
 from fastapi.security import APIKeyHeader
-
+import logging
 from config import MAIA_KEY, SERVER_PORT, SERVER_NAME
 from src.schemas import ComputeRequest
 from src.core.inference import run_inference
@@ -21,7 +21,7 @@ async def compute(
     request: ComputeRequest,
     _token: str = Depends(_verify_token),
 ) -> str:
-    
+    logging.info(f"Requête reçue : {request.prompt}")
     url = f"http://127.0.0.1:{SERVER_PORT}/v1/chat/completions"
 
     return run_inference(url, request.prompt)
