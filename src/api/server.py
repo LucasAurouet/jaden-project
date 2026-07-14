@@ -11,6 +11,7 @@ _api_key_header = APIKeyHeader(name="maia-token", auto_error=False)
 
 
 async def _verify_token(api_key: str = Depends(_api_key_header)) -> str:
+    logging.warning(f"Vérification de la clé MAIA : {api_key}")
     if api_key != MAIA_KEY:
         raise HTTPException(status_code=403, detail="Clé MAIA invalide")
     return api_key
@@ -22,7 +23,7 @@ async def compute(
     _token: str = Depends(_verify_token),
 ) -> str:
     logging.warning(f"Requête reçue : {request.prompt}")
-    url = f"http://127.0.0.1:{SERVER_PORT}/v1/chat/completions"
+    url = f"http://127.0.0.1:8080/v1/chat/completions"
 
     return await run_inference(request.prompt, url)
 

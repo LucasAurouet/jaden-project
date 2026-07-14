@@ -1,4 +1,4 @@
-from config import SERVER_IP
+from config import SERVER_IP, MAIA_KEY
 import httpx
 
 async def run_query(prompt):
@@ -6,9 +6,10 @@ async def run_query(prompt):
     
     payload = {"prompt": prompt}
 
+    headers = {"maia-token": MAIA_KEY} 
     try:
         async with httpx.AsyncClient(timeout=10.0) as client:
-            response = await client.post(url, json=payload)
+            response = await client.post(url, json=payload, headers=headers)
 
             response.raise_for_status()
 
