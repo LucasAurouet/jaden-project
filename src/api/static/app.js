@@ -21,7 +21,7 @@ async function sendMessage() {
             method: "POST",
             headers: {
                 "Content-Type": "application/json",
-                "X-MAIA-Token": MAIA_KEY
+                "maia-token": MAIA_KEY
             },
             body: JSON.stringify({
                 prompt: text,
