@@ -12,3 +12,6 @@ venv/
 
 # Environment
 .env
+
+# Misc
+.assets/
