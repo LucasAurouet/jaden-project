@@ -4,7 +4,6 @@ from src.api.database import init_db, save_message, get_chat_history
 from config import MAIA_KEY, SERVER_PORT, SERVER_NAME
 from src.schemas import ComputeRequest
 from src.api.inference import run_inference
-import uuid
 
 app = FastAPI(title="MAIA Server")
 
@@ -30,7 +29,7 @@ async def compute(
     save_message(request.session_id, "user", request.prompt)
     history = get_chat_history(request.session_id)
     messages = [{"role": "system", "content": "Tu es un assistant développeur."}] + history
-
+    print(messages)
     url = "http://127.0.0.1:8080/v1/chat/completions"
     assistant_response = await run_inference(messages, url)
     
