@@ -25,7 +25,7 @@ app = FastAPI(title="MAIA Server", lifespan=lifespan)
 
 _api_key_header = APIKeyHeader(name="maia-token", auto_error=False)
 
-static_path = os.path.join(os.path.dirname(__file__), "static")
+static_path = os.path.join(os.path.dirname(__file__), "../", "client/","static")
 app.mount("/static", StaticFiles(directory=static_path), name="static")
 
 
