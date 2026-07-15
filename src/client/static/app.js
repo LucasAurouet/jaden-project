@@ -1,4 +1,4 @@
-const SESSION_ID = crypto.randomUUID();
+const SESSION_ID = 'session-' + Date.now() + '-' + Math.random().toString(36).substring(2, 11);
 const API_URL = "/v1/compute";
 const MAIA_KEY = "maia"; 
 
@@ -13,11 +13,9 @@ async function sendMessage() {
     const text = userInput.value.trim();
     if (!text) return;
 
-    // 1. On affiche le message utilisateur
     appendMessage(text, "user");
     userInput.value = "";
 
-    // 2. On affiche l'indicateur de chargement et on récupère son ID unique
     const currentLoaderId = appendMessage("CONNEXION_AU_NEURAL_NET...", "assistant");
 
     try {
@@ -38,13 +36,11 @@ async function sendMessage() {
         const data = await response.json();
         console.log("Contrat respecté :", data); 
 
-        // 3. On supprime l'indicateur de chargement
         const loaderElement = document.getElementById(currentLoaderId);
         if (loaderElement) {
             loaderElement.remove();
         }
 
-        // 4. On affiche la réponse avec le bon champ (.content)
         if (data.status === "success") {
             appendMessage(data.content, "assistant");
         } else {
@@ -52,7 +48,6 @@ async function sendMessage() {
         }
 
     } catch (error) {
-        // En cas d'erreur, on nettoie quand même le loader s'il existe
         const loaderElement = document.getElementById(currentLoaderId);
         if (loaderElement) {
             loaderElement.remove();
@@ -61,7 +56,6 @@ async function sendMessage() {
     }
 }
 
-// 🟢 Fonction améliorée pour générer des IDs uniques
 function appendMessage(text, sender) {
     const msgDiv = document.createElement("div");
     const uniqueId = "msg-" + Date.now() + "-" + Math.random().toString(36).substr(2, 9);
@@ -73,5 +67,5 @@ function appendMessage(text, sender) {
     chatBox.appendChild(msgDiv);
     chatBox.scrollTop = chatBox.scrollHeight;
     
-    return uniqueId; // 🟢 Permet de récupérer l'ID pour pouvoir le supprimer plus tard
+    return uniqueId;
 }
