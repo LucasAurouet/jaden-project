@@ -3,7 +3,7 @@
     --terminal-bg: #0f1015;
     --neon-cyan: #00f0ff;
     --neon-magenta: #ff0055;
-    --text-color: #05ffa1; /* Vert terminal d'origine */
+    --text-color: #05ffa1;
     --neon-yellow: #fcee09;
 }
 
@@ -135,4 +135,36 @@ body {
 .cyber-btn:hover {
     background: var(--neon-cyan);
     box-shadow: 0 0 10px var(--neon-cyan);
+}
+
+.loader-container {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-family: 'Courier New', Courier, monospace;
+    color: #ff007f; 
+    text-shadow: 0 0 5px #ff007f;
+}
+
+.cyber-spinner {
+    width: 16px;
+    height: 16px;
+    border: 2px solid rgba(255, 0, 127, 0.2);
+    border-top: 2px solid #ff007f;
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+}
+
+.blink-text {
+    animation: blink 1.5s infinite;
+}
+
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+@keyframes blink {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.4; }
 }

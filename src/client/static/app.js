@@ -16,7 +16,7 @@ async function sendMessage() {
     appendMessage(text, "user");
     userInput.value = "";
 
-    const currentLoaderId = appendMessage("CONNEXION_AU_NEURAL_NET...", "assistant");
+    const currentLoaderId = showLoader();
 
     try {
         const response = await fetch(API_URL, {
@@ -69,3 +69,24 @@ function appendMessage(text, sender) {
     
     return uniqueId;
 }
+
+function showLoader() {
+    const loaderId = "loader-" + Date.now();
+    
+    const msgDiv = document.createElement("div");
+    msgDiv.id = loaderId;
+    msgDiv.classList.add("message", "assistant");
+
+    msgDiv.innerHTML = `
+        <div class="loader-container">
+            <div class="cyber-spinner"></div>
+            <span class="blink-text">INITIALISATION_CONNEXION_NEURALE...</span>
+        </div>
+    `;
+
+    chatBox.appendChild(msgDiv);
+    chatBox.scrollTop = chatBox.scrollHeight;
+
+    return loaderId;
+}
+
