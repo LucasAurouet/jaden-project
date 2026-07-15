@@ -79,8 +79,7 @@ function showLoader() {
 
     msgDiv.innerHTML = `
         <div class="loader-container">
-            <div class="cyber-spinner"></div>
-            <span class="blink-text">INITIALISATION_CONNEXION_NEURALE...</span>
+            <div class="loader"></div>
         </div>
     `;
 
