@@ -148,8 +148,10 @@ body {
 .loader {
   width: 9px;
   height: 9px;
-  background: #000;
-  color: #000;
+  background: #ff007f;
+  color: #ff007f;
+  filter: drop-shadow(0 0 2px #ff007f);
+  margin: 18px 22px 18px 22px;
   box-shadow: 
     -18px -9px,0 -9px,18px -9px,
     -18px  0  ,       18px  0  ,
