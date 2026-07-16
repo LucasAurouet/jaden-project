@@ -2,14 +2,11 @@ import sqlite3
 from pathlib import Path
 from typing import List, Dict
 
-# Gestion dynamique des dossiers
 SERVER_DIR = Path(__file__).parent
 DATA_DIR = SERVER_DIR / "data"
 DB_PATH = DATA_DIR / "maia.db"
 
 def init_db():
-    """Initialise la base de données et crée les tables nécessaires."""
-    # Crée le dossier 'data' s'il n'existe pas
     DATA_DIR.mkdir(exist_ok=True)
     
     with sqlite3.connect(DB_PATH) as conn:
@@ -62,7 +59,7 @@ def save_message(session_id: str, role: str, content: str):
 def get_chat_history(session_id: str) -> List[Dict[str, str]]:
     """Récupère l'historique complet d'une session sous forme utilisable par le LLM."""
     with sqlite3.connect(DB_PATH) as conn:
-        conn.row_factory = sqlite3.Row  # Pour accéder aux colonnes par leur nom
+        conn.row_factory = sqlite3.Row
         cursor = conn.cursor()
         cursor.execute(
             "SELECT role, content FROM messages WHERE session_id = ? ORDER BY created_at ASC",
