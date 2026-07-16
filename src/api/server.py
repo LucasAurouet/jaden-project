@@ -32,5 +32,5 @@ app.include_router(system_router)
 app.include_router(chat_router, prefix="/v1")
 app.include_router(workspace_router, prefix="/v1")
 
-static_path = os.path.join(os.path.dirname(__file__), "../", "client/","static")
+static_path = os.path.join(os.path.dirname(__file__), "../../client/static")
 app.mount("/static", StaticFiles(directory=static_path), name="static")
