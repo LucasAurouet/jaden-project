@@ -13,7 +13,13 @@
             <h1>MAIA // <span class="accent-text">SYSTEM_ONLINE</span></h1>
             <div class="status-bar">SECURE_LINE_8081</div>
         </header>
-        
+        <div class="upload-container">
+            <label for="file-input" class="upload-btn">
+                Ajouter un fichier au workspace
+            </label>
+            <input type="file" id="file-input" style="display: none;" accept=".txt,.md,.json,.csv,.pdf, .py" />
+            <span id="upload-status" style="margin-left: 10px; font-size: 0.9em; color: #888;"></span>
+        </div>
         <div id="chat-box" class="cyber-terminal"></div>
         
         <div class="input-area">
