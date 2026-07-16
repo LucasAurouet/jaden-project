@@ -33,7 +33,8 @@ async function uploadFile(file) {
 
     const formData = new FormData();
     formData.append("file", file);
-
+    formData.append("session_id", SESSION_ID);
+    
     try {
         const response = await fetch(UPLOAD_URL, {
             method: "POST",

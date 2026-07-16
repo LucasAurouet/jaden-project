@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends, UploadFile, File, HTTPException
 from typing import List, Dict, Any
 from src.api.dependencies import verify_token
-from src.api.services.file_service import FileService
+from src.api.services.file import FileService
 router = APIRouter(tags=["Workspace & Fichiers"])
 
 @router.post("/workspace/upload")
