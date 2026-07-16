@@ -2,7 +2,7 @@ import sqlite3
 from pathlib import Path
 from typing import List, Dict
 
-SERVER_DIR = Path(__file__).parent
+SERVER_DIR = Path(__file__).parent.parent
 DATA_DIR = SERVER_DIR / "data"
 DB_PATH = DATA_DIR / "maia.db"
 
