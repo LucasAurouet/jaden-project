@@ -4,7 +4,7 @@ from fastapi.responses import FileResponse
 
 router = APIRouter(tags=["Système"])
 
-static_path = os.path.join(os.path.dirname(__file__), "../../../", "client/", "static")
+static_path = os.path.join(os.path.dirname(__file__), "../../client/static")
 
 @router.get("/health")
 async def health():
