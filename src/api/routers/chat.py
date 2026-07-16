@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends
 from src.schemas import ComputeRequest, ComputeResponse
 from src.api.dependencies import verify_token
-from api.services.chat import ChatService
+from src.api.services.chat import ChatService
 
 router = APIRouter(tags=["Conversations"])
 

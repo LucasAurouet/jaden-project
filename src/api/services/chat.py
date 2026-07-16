@@ -1,12 +1,13 @@
 from typing import Tuple
 from src.api.services.database import save_message, get_chat_history
 from src.api.services.inference import run_inference
+from src.schemas import ComputeResponse
 
 class ChatService:
 
     
     @staticmethod
-    async def process_compute(session_id: str, prompt: str) -> Tuple[str, str, str]:
+    async def process_compute(session_id: str, prompt: str) -> ComputeResponse:
 
         save_message(session_id, "user", prompt)
         history = get_chat_history(session_id)

@@ -1,11 +1,10 @@
 import os
-import shutil
 from fastapi import UploadFile
 from typing import List, Dict, Any
 
 WORKSPACE_DIR = r"C:\Users\Lucas\Documents\maia"
-ALLOWED_EXTENSIONS = {".txt", ".md", ".json", ".csv", ".pdf"}
-MAX_FILE_SIZE = 10 * 1024 * 1024  # 10 Mo max
+ALLOWED_EXTENSIONS = {".txt", ".md", ".json", ".csv", ".pdf", ".py"}
+MAX_FILE_SIZE = 10 * 1024 * 1024 
 
 class FileService:
     """
@@ -23,7 +22,6 @@ class FileService:
         if not clean_filename:
             return {"status": "error", "message": "Nom de fichier invalide."}
 
-        # Validation de l'extension
         _, ext = os.path.splitext(clean_filename.lower())
         if ext not in ALLOWED_EXTENSIONS:
             return {
@@ -31,7 +29,6 @@ class FileService:
                 "message": f"Format non autorisé. Formats acceptés : {', '.join(ALLOWED_EXTENSIONS)}"
             }
 
-        # Validation du chemin absolu (Protection contre le Path Traversal)
         destination_path = os.path.normpath(os.path.join(WORKSPACE_DIR, clean_filename))
         if not destination_path.lower().startswith(WORKSPACE_DIR.lower()):
             return {"status": "error", "message": "Tentative d'écriture illégale hors du workspace."}
@@ -39,7 +36,7 @@ class FileService:
         try:
             total_size = 0
             with open(destination_path, "wb") as buffer:
-                while chunk := await file.read(1024 * 1024):  # Morceaux de 1 Mo
+                while chunk := await file.read(1024 * 1024):
                     total_size += len(chunk)
                     if total_size > MAX_FILE_SIZE:
                         buffer.close()
@@ -68,7 +65,6 @@ class FileService:
         for filename in os.listdir(WORKSPACE_DIR):
             file_path = os.path.join(WORKSPACE_DIR, filename)
             if os.path.isfile(file_path):
-                # Récupération des métadonnées basiques
                 stat = os.stat(file_path)
                 files_list.append({
                     "name": filename,
