@@ -8,10 +8,7 @@ const chatBox = document.getElementById("chat-box");
 const userInput = document.getElementById("user-input");
 const fileListContainer = document.getElementById("workspace-files"); 
 const fileInput = document.getElementById("file-input");
-
-userInput.addEventListener("keypress", (e) => {
-    if (e.key === "Enter") sendMessage();
-});
+const refreshWorkspaceBtn = document.getElementById("refresh-workspace-btn"); 
 
 userInput.addEventListener("keypress", (e) => {
     if (e.key === "Enter") sendMessage();
@@ -25,6 +22,19 @@ fileInput.addEventListener("change", async (event) => {
     
     event.target.value = '';
 });
+
+if (refreshWorkspaceBtn) {
+    refreshWorkspaceBtn.addEventListener("click", async () => {
+        const originalText = refreshWorkspaceBtn.innerHTML;
+        refreshWorkspaceBtn.disabled = true;
+        refreshWorkspaceBtn.innerHTML = "Actualisation...";
+        
+        await fetchWorkspaceFiles();
+        
+        refreshWorkspaceBtn.disabled = false;
+        refreshWorkspaceBtn.innerHTML = originalText;
+    });
+}
 
 
 async function uploadFile(file) {
