@@ -78,7 +78,8 @@ async function fetchWorkspaceFiles() {
             method: "POST",
             headers: {
                 "maia-token": MAIA_KEY
-            }
+            },
+            body: JSON.stringify({ session_id: SESSION_ID })
         });
 
         if (!response.ok) throw new Error(`Erreur HTTP: ${response.status}`);
