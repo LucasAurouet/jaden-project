@@ -166,7 +166,7 @@ class FileService:
         }
     
     @staticmethod
-    def feed_workspace_to_session(session_id: str, tree: str) -> Dict[str, Any]:
+    def feed_workspace_to_session(session_id: str, tree_string: str) -> Dict[str, Any]:
         """
         Injecte l'arborescence complète du workspace dans le contexte de l'IA.
         Utile pour que l'IA ait une vue d'ensemble des fichiers disponibles.
@@ -175,7 +175,7 @@ class FileService:
         system_prompt = (
             "[SYSTEME : Voici l'arborescence complète du workspace de Maia. "
             "Utilise ces informations pour répondre aux questions futures de l'utilisateur.]\n\n"
-            f"{tree}"
+            f"{tree_string}"
         )
         
         save_message(session_id, "system", system_prompt)
@@ -183,5 +183,5 @@ class FileService:
         return {
             "status": "success",
             "message": "L'arborescence du workspace a été injectée dans le contexte de l'IA.",
-            "tree": tree
+            "tree": tree_string
         }
