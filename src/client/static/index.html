@@ -14,32 +14,30 @@
             <h1>MAIA // <span class="accent-text">SYSTEM_ONLINE</span></h1>
             <div class="status-bar">SECURE_LINE_8081</div>
         </header>
-        
-        <div class="upload-container">
-            <label for="file-input" class="upload-btn">
-                Ajouter un fichier au workspace
-            </label>
-            <input type="file" id="file-input" style="display: none;" accept=".txt,.md,.json,.csv,.pdf,.py,.html,.css,.js" />
-            <span id="upload-status" style="margin-left: 10px; font-size: 0.9em; color: #888;"></span>
-        </div>
 
-        <div class="workspace-header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
-            <h3>Fichiers Workspace</h3>
-            <button id="refresh-workspace-btn" title="Actualiser la liste" style="background: none; border: none; color: #888; cursor: pointer; font-size: 1em; padding: 4px 8px; border-radius: 4px; transition: background 0.2s;">
-                Rafraîchir
-            </button>
-        </div>
-        
-        <div class="sidebar">
-            <h3>Workspace</h3>
-            <ul id="workspace-files" style="list-style: none; padding: 0;"></ul>
-        </div>
-        
-        <div id="chat-box" class="cyber-terminal"></div>
-        
-        <div class="input-area">
-            <input type="text" id="user-input" placeholder="ENTRER UNE REQUÊTE..." autocomplete="off">
-            <button class="cyber-btn" onclick="sendMessage()">ENVOYER</button>
+        <div class="main-layout">
+            
+            <div class="chat-column">
+                <div id="chat-box" class="cyber-terminal"></div>
+                <div class="input-area">
+                    <input type="text" id="user-input" placeholder="ENTRER UNE REQUÊTE..." autocomplete="off">
+                    <button class="cyber-btn" onclick="sendMessage()">ENVOYER</button>
+                </div>
+            </div>
+            
+            <div class="sidebar">
+                <div class="upload-container">
+                    <label for="file-input" class="upload-btn">+ Ajouter un fichier</label>
+                    <input type="file" id="file-input" style="display: none;" accept=".txt,.md,.json,.csv,.pdf,.py,.html,.css,.js" />
+                    <span id="upload-status" style="margin-top: 8px; font-size: 0.85em; color: #888; display: block;"></span>
+                </div>
+                <div class="workspace-header">
+                    <h3>Workspace</h3>
+                    <button id="refresh-workspace-btn" title="Actualiser">Rafraîchir</button>
+                </div>
+                <ul id="workspace-files" style="list-style: none; padding: 0; margin: 0;"></ul>
+            </div>
+
         </div>
     </div>
     
