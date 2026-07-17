@@ -7,6 +7,7 @@ try:
     import pynvml
     pynvml.nvmlInit()
     NVML_AVAILABLE = True
+    print("NVML library loaded successfully.")
 except Exception:
     NVML_AVAILABLE = False
 

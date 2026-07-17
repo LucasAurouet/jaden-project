@@ -220,7 +220,7 @@ async function updateMetrics() {
         const data = await response.json();
         
         if (document.getElementById('stat-cpu')) document.getElementById('stat-cpu').textContent = data.system.cpu_percent.toFixed(2) + ' %';
-        if (document.getElementById('stat-ram')) document.getElementById('stat-ram').textContent = data.system.ram_percent.toFixed(2) + ' GB';
+        if (document.getElementById('stat-ram')) document.getElementById('stat-ram').textContent = data.system.ram_percent.toFixed(2) + ' %';
         if (document.getElementById('stat-gpu')) document.getElementById('stat-gpu').textContent = data.system.gpu_percent.toFixed(2) + ' %';
         if (document.getElementById('stat-tokens')) document.getElementById('stat-tokens').textContent = data.inference.tg_tokens_per_second.toFixed(2) + ' tokens/s';
         
