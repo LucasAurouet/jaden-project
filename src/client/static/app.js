@@ -219,9 +219,10 @@ async function updateMetrics() {
         
         const data = await response.json();
         
-        if (document.getElementById('stat-ram')) document.getElementById('stat-ram').textContent = data.system.ram_usage;
+        if (document.getElementById('stat-cpu')) document.getElementById('stat-cpu').textContent = data.system.cpu_percent.toFixed(2) + ' %';
+        if (document.getElementById('stat-ram')) document.getElementById('stat-ram').textContent = data.system.ram_usage.toFixed(2) + ' GB';
         if (document.getElementById('stat-gpu')) document.getElementById('stat-gpu').textContent = data.system.gpu_usage;
-        if (document.getElementById('stat-tokens')) document.getElementById('stat-tokens').textContent = data.inference.tokens_per_second;
+        if (document.getElementById('stat-tokens')) document.getElementById('stat-tokens').textContent = data.inference.tokens_per_second.toFixed(2) + ' tokens/s';
         
     } catch (error) {
         console.error("Erreur de rafraîchissement des métriques:", error);
