@@ -38,6 +38,6 @@ def get_system_metrics() -> dict:
             util = pynvml.nvmlDeviceGetUtilizationRates(handle)
             result["gpu_percent"] = util.gpu
         except Exception:
-            pass  # GPU présent mais query échoue — on laisse None
+            pass 
 
     return result
