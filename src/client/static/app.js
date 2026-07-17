@@ -10,6 +10,8 @@ const fileListContainer = document.getElementById("workspace-files");
 const fileInput = document.getElementById("file-input");
 const refreshWorkspaceBtn = document.getElementById("refresh-workspace-btn"); 
 
+marked.setOptions({ breaks: true });
+
 userInput.addEventListener("keypress", (e) => {
     if (e.key === "Enter") sendMessage();
 });
@@ -177,8 +179,13 @@ function appendMessage(text, sender) {
     
     msgDiv.id = uniqueId;
     msgDiv.classList.add("message", sender);
-    msgDiv.textContent = text;
-    
+
+    if (sender === "assistant") {
+        msgDiv.innerHTML = marked.parse(text);
+        msgDiv.querySelectorAll('pre code').forEach(el => hljs.highlightElement(el));
+    } else {
+        msgDiv.textContent = text; 
+    }
     chatBox.appendChild(msgDiv);
     chatBox.scrollTop = chatBox.scrollHeight;
     
