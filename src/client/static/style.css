@@ -225,3 +225,40 @@ body {
      -18px 18px,0 18px,18px 18px #0000;
   }
 }
+
+.workspace-file-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 8px 12px;
+    border-bottom: 1px solid var(--border-color);
+    font-size: 0.9em;
+    transition: background-color 0.2s ease;
+}
+
+.workspace-file-item:hover {
+    background-color: rgba(255, 255, 255, 0.02);
+}
+
+.workspace-file-name {
+    color: var(--text-primary);
+    font-family: monospace;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 180px;
+    cursor: default;
+}
+
+.workspace-file-size {
+    color: var(--text-muted);
+    font-size: 0.85em;
+}
+
+.workspace-empty-message {
+    color: var(--text-secondary);
+    font-size: 0.9em;
+    padding: 12px;
+    font-style: italic;
+    text-align: center;
+}

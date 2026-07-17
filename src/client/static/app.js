@@ -1,10 +1,13 @@
 const SESSION_ID = 'session-' + Date.now() + '-' + Math.random().toString(36).substring(2, 11);
 const API_URL = "/v1/compute";
 const UPLOAD_URL = "/v1/workspace/upload";
+const WORKSPACE_URL = "/v1/workspace/inspect";
 const MAIA_KEY = "maia"; 
 
 const chatBox = document.getElementById("chat-box");
 const userInput = document.getElementById("user-input");
+const fileListContainer = document.getElementById("workspace-files"); 
+const fileInput = document.getElementById("file-input");
 
 userInput.addEventListener("keypress", (e) => {
     if (e.key === "Enter") sendMessage();
@@ -14,17 +17,15 @@ userInput.addEventListener("keypress", (e) => {
     if (e.key === "Enter") sendMessage();
 });
 
-document.getElementById('file-input').addEventListener('change', handleFileChange);
-
-
-async function handleFileChange(event) {
+fileInput.addEventListener("change", async (event) => {    
     const file = event.target.files[0];
     if (!file) return;
 
     await uploadFile(file);
     
     event.target.value = '';
-}
+});
+
 
 async function uploadFile(file) {
     const statusLabel = document.getElementById('upload-status');
@@ -47,7 +48,6 @@ async function uploadFile(file) {
         if (response.ok) {
             statusLabel.textContent = `✔ ${result.filename} prêt !`;
             statusLabel.style.color = "#4caf50";
-            injectSystemMessageInChat(result.filename);
         } else {
             statusLabel.textContent = `❌ Erreur : ${result.detail || 'Impossible de charger'}`;
             statusLabel.style.color = "#f44336";
@@ -59,13 +59,57 @@ async function uploadFile(file) {
     }
 }
 
-function injectSystemMessageInChat(filename) {
-    // Note : Actuellement ton JS n'envoie que "prompt" au backend, et le backend va chercher
-    // l'historique dans SQLite. Le JS n'a pas de variable locale "messages".
-    // Idéalement, c'est ton backend qui doit écrire un message système dans SQLite
-    // lors de l'upload pour que le LLM sache que le fichier existe.
-    console.log(`[Système local] Notification d'ajout pour : ${filename}`);
+
+async function fetchWorkspaceFiles() {
+    if (!fileListContainer) return;
+    
+    try {
+        const response = await fetch(WORKSPACE_URL, {
+            method: "GET",
+            headers: {
+                "maia-token": MAIA_KEY
+            }
+        });
+
+        if (!response.ok) throw new Error(`Erreur HTTP: ${response.status}`);
+        
+        const files = await response.json();
+        renderWorkspaceFiles(files);
+
+    } catch (error) {
+        console.error("Impossible de récupérer la liste des fichiers du workspace :", error);
+        fileListContainer.innerHTML = `<li style="color: #f44336; font-size: 0.9em; padding: 8px;">Impossible de charger le workspace</li>`;
+    }
 }
+
+
+function renderWorkspaceFiles(files) {
+    fileListContainer.innerHTML = "";
+
+    if (!files || files.length === 0) {
+        fileListContainer.innerHTML = `<li class="workspace-empty-message">Le workspace est vide</li>`;
+        return;
+    }
+
+    files.forEach(file => {
+        const li = document.createElement("li");
+
+        li.classList.add("workspace-file-item");
+
+        const sizeKB = (file.size / 1024).toFixed(1);
+        
+        li.innerHTML = `
+            <span class="workspace-file-name" title="${file.name}">
+                ${file.name}
+            </span>
+            <span class="workspace-file-size">
+                ${sizeKB} Ko
+            </span>
+        `;
+        fileListContainer.appendChild(li);
+    });
+}
+
 
 async function sendMessage() {
     const text = userInput.value.trim();
@@ -114,6 +158,7 @@ async function sendMessage() {
     }
 }
 
+
 function appendMessage(text, sender) {
     const msgDiv = document.createElement("div");
     const uniqueId = "msg-" + Date.now() + "-" + Math.random().toString(36).substr(2, 9);
@@ -127,6 +172,7 @@ function appendMessage(text, sender) {
     
     return uniqueId;
 }
+
 
 function showLoader() {
     const loaderId = "loader-" + Date.now();

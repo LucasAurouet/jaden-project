@@ -17,7 +17,7 @@ async def upload_file(
 
     return result
 
-@router.get("/workspace/files")
+@router.get("/workspace/inspect")
 async def list_files(
     _token: str = Depends(verify_token)
 ) -> List[Dict[str, Any]]:
@@ -25,4 +25,6 @@ async def list_files(
     Retourne la liste des documents présents dans le répertoire de travail de Maia.
     Très utile pour l'affichage dans ton UI de fichiers disponibles.
     """
-    return FileService.list_workspace_files()
+    # On isole uniquement le tableau de fichiers requis par le contrat de réponse de l'UI
+    workspace_data = FileService.list_workspace_files()
+    return workspace_data["files"]

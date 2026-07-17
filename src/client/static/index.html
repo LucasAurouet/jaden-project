@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>MAIA // NET_TERMINAL</title>
     <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&family=Share+Tech+Mono&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="/static/style_test.css">
+    <link rel="stylesheet" href="/static/style.css">
 </head>
 <body>
     <div class="cyber-container">
@@ -13,6 +13,7 @@
             <h1>MAIA // <span class="accent-text">SYSTEM_ONLINE</span></h1>
             <div class="status-bar">SECURE_LINE_8081</div>
         </header>
+        
         <div class="upload-container">
             <label for="file-input" class="upload-btn">
                 Ajouter un fichier au workspace
@@ -20,6 +21,12 @@
             <input type="file" id="file-input" style="display: none;" accept=".txt,.md,.json,.csv,.pdf,.py,.html,.css,.js" />
             <span id="upload-status" style="margin-left: 10px; font-size: 0.9em; color: #888;"></span>
         </div>
+        
+        <div class="sidebar">
+            <h3>Workspace</h3>
+            <ul id="workspace-files" style="list-style: none; padding: 0;"></ul>
+        </div>
+        
         <div id="chat-box" class="cyber-terminal"></div>
         
         <div class="input-area">
