@@ -46,6 +46,44 @@
 
         <div class="main-layout">
 
+            <aside class="cockpit-panel">
+                <div class="cockpit-panel__bar">
+                    <span class="frame-label">SYS·MONITOR</span>
+                </div>
+
+                <div class="cockpit-charts">
+                    <div class="chart-block">
+                        <div class="chart-block__header">
+                            <span class="chart-label">CPU</span>
+                            <span class="chart-value" id="stat-cpu">—</span>
+                        </div>
+                        <canvas id="chart-cpu" height="60"></canvas>
+                    </div>
+
+                    <div class="chart-block">
+                        <div class="chart-block__header">
+                            <span class="chart-label">RAM</span>
+                            <span class="chart-value" id="stat-ram">—</span>
+                        </div>
+                        <canvas id="chart-ram" height="60"></canvas>
+                    </div>
+
+                    <div class="chart-block">
+                        <div class="chart-block__header">
+                            <span class="chart-label">GPU</span>
+                            <span class="chart-value" id="stat-gpu">—</span>
+                        </div>
+                        <canvas id="chart-gpu" height="60"></canvas>
+                    </div>
+
+                    <div class="chart-block">
+                        <div class="chart-block__header">
+                            <span class="chart-label">TOKENS/S</span>
+                            <span class="chart-value" id="stat-tokens">—</span>
+                        </div>
+                        <canvas id="chart-tokens" height="60"></canvas>
+                    </div>
+
             <!-- Chat principal -->
             <div class="chat-column">
                 <div class="terminal-frame">
@@ -136,6 +174,7 @@
         </div>
     </div>
 
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
     <script src="/static/marked.min.js"></script>
     <script src="/static/highlight.min.js"></script>
     <script src="/static/app.js"></script>
