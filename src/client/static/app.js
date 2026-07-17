@@ -77,10 +77,11 @@ async function fetchWorkspaceFiles() {
         const response = await fetch(WORKSPACE_URL, {
             method: "POST",
             headers: {
+                "Content-Type": "application/json",
                 "maia-token": MAIA_KEY
             },
             body: JSON.stringify({ session_id: SESSION_ID })
-        });
+        }); 
 
         if (!response.ok) throw new Error(`Erreur HTTP: ${response.status}`);
         
