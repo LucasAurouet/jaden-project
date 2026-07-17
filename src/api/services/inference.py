@@ -1,5 +1,10 @@
 import httpx
 from typing import List, Dict
+import re
+import httpx
+from src.schemas import LlamaMetrics
+
+_last_llama_metrics = LlamaMetrics()
 
 async def run_inference(
     messages : List[Dict[str, str]],
@@ -34,3 +39,26 @@ async def run_inference(
     except Exception as e:
         return f"[Erreur inattendue] {str(e)}"
 
+
+async def get_llama_metrics_from_api() -> LlamaMetrics:
+    """Requête /metrics Prometheus de llama-server."""
+    global _last_llama_metrics
+    try:
+        async with httpx.AsyncClient(timeout=1.0) as client:
+            r = await client.get(f"{LLAMA_BASE_URL}/metrics")
+            if r.status_code != 200:
+                return _last_llama_metrics
+
+            text = r.text
+            def extract(key: str) -> float | None:
+                m = re.search(rf"^{re.escape(key)}\s+([\d.]+)", text, re.MULTILINE)
+                return float(m.group(1)) if m else None
+
+            kv_ratio = extract("llamacpp:kv_cache_usage_ratio")
+            if kv_ratio is not None:
+                _last_llama_metrics.kv_cache_hit = kv_ratio
+
+    except Exception:
+        pass 
+
+    return _last_llama_metrics

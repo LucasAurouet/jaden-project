@@ -2,6 +2,7 @@ import os
 from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import FileResponse
 from contextlib import asynccontextmanager
 from src.api.services.database import init_db
 from src.api.routers.chat import router as chat_router
@@ -28,7 +29,14 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-app.include_router(system_router)
+@app.get("/")
+async def root():
+    index_file = os.path.join(static_path, "index.html")
+    if os.path.exists(index_file):
+        return FileResponse(index_file)
+    return {"status": "error", "message": f"Le fichier index.html est introuvable à l'adresse : {index_file}"}
+
+app.include_router(system_router, prefix="/v1")
 app.include_router(chat_router, prefix="/v1")
 app.include_router(workspace_router, prefix="/v1")
 

@@ -8,10 +8,9 @@ if __name__ == "__main__":
     mode = sys.argv[1] if len(sys.argv) > 1 else "server"
     
     if mode == "server":
-        from config import SERVER_NAME, SERVER_PORT
         import uvicorn
         from src.api.server import app
-        print(f"Démarrage du serveur à l'adresse [{SERVER_NAME}] sur le port [{SERVER_PORT}]")
+        print(f"Démarrage du serveur")
         uvicorn.run(app, host="0.0.0.0", port=8081)
 
     elif mode == "client":

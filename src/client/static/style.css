@@ -1,22 +1,11 @@
-/* ─── PALETTE ───────────────────────────────────────────────────────────────
-   Fond : noir encre profond, presque organique
-   Accent chaud : ambre/or — "Iris" comme fleur/œil, loin du bleu cloud
-   Accent froid : vert phosphore CRT, discret
-   Texte : ivoire vieilli, pas blanc pur (rétrofuturisme)
-   Danger : rouge sang, pas rouge vif
-   ─────────────────────────────────────────────────────────────────────────── */
 :root {
     --ink:        #0c0b08;
     --ink-raised: #131209;
     --ink-mid:    #1c1a12;
     --ink-border: #2e2b1c;
 
-    --amber:      #E8C84A;
-    --amber-dim:  #9e8828;
-    --amber-glow: rgba(232, 200, 74, 0.12);
-
     --phosphor:   #4ade80;
-    --phosphor-dim: #1a5c33;
+    --phosphor-dim: #228b22;
 
     --ivory:      #d4ceb8;
     --ivory-dim:  #7a7460;
@@ -117,7 +106,7 @@ body {
 .title-main {
     font-family: 'Zen Dots', sans-serif;
     font-size: 1.4rem;
-    color: var(--amber);
+    color: var(--phosphor);
     letter-spacing: 0.15em;
 }
 
@@ -180,7 +169,6 @@ body {
     border: 1px solid var(--ink-border);
     background: var(--ink-raised);
     overflow: hidden;
-    /* Angle coupé en haut à droite — signature cockpit */
     clip-path: polygon(0 0, calc(100% - 16px) 0, 100% 16px, 100% 100%, 0 100%);
 }
 
@@ -198,7 +186,7 @@ body {
     font-family: 'Saira Condensed', sans-serif;
     font-size: 0.65rem;
     font-weight: 600;
-    color: var(--amber-dim);
+    color: var(--phosphor-dim);
     letter-spacing: 0.2em;
 }
 
@@ -221,7 +209,7 @@ body {
 .chat-viewport::-webkit-scrollbar { width: 4px; }
 .chat-viewport::-webkit-scrollbar-track { background: transparent; }
 .chat-viewport::-webkit-scrollbar-thumb { background: var(--ink-border); }
-.chat-viewport::-webkit-scrollbar-thumb:hover { background: var(--amber-dim); }
+.chat-viewport::-webkit-scrollbar-thumb:hover { background: var(--phosphor-dim); }
 
 /* ─── MESSAGES ───────────────────────────────────────────────────────────── */
 .message {
@@ -236,17 +224,16 @@ body {
     align-self: flex-end;
     background: var(--ink-mid);
     border: 1px solid var(--ink-border);
-    border-right: 2px solid var(--amber);
+    border-right: 2px solid var(--phosphor);
     color: var(--ivory);
-    /* Angle coupé bas-gauche */
     clip-path: polygon(0 0, 100% 0, 100% 100%, 8px 100%, 0 calc(100% - 8px));
 }
 
 .message.assistant {
     align-self: flex-start;
-    background: rgba(232, 200, 74, 0.04);
+    background: rgba(46, 204, 113, 0.04);
     border: 1px solid var(--ink-border);
-    border-left: 2px solid var(--amber-dim);
+    border-left: 2px solid var(--phosphor-dim);
     color: var(--ivory);
     clip-path: polygon(0 0, 100% 0, 100% calc(100% - 8px), calc(100% - 8px) 100%, 0 100%);
 }
@@ -259,14 +246,14 @@ body {
 .message.assistant h3 {
     font-family: 'Saira Condensed', sans-serif;
     font-weight: 600;
-    color: var(--amber);
+    color: var(--phosphor);
     letter-spacing: 0.1em;
     margin: 0.8em 0 0.4em;
 }
 .message.assistant h1 { font-size: 1.1rem; }
 .message.assistant h2 { font-size: 1rem; }
 .message.assistant h3 { font-size: 0.9rem; }
-.message.assistant strong { color: var(--amber); font-weight: normal; }
+.message.assistant strong { color: var(--phosphor); font-weight: normal; }
 .message.assistant em { color: var(--ivory-dim); font-style: italic; }
 .message.assistant code {
     background: var(--ink-mid);
@@ -297,7 +284,7 @@ body {
     margin: 0.4em 0;
 }
 .message.assistant li { margin: 0.2em 0; }
-.message.assistant a { color: var(--amber); text-decoration: underline; text-underline-offset: 3px; }
+.message.assistant a { color: var(--phosphor); text-decoration: underline; text-underline-offset: 3px; }
 
 /* ─── LOADER ─────────────────────────────────────────────────────────────── */
 .loader-container {
@@ -322,12 +309,12 @@ body {
     display: inline-block;
     width: 4px;
     height: 4px;
-    background: var(--amber);
+    background: var(--phosphor);
     animation: loader-blink 1.2s ease-in-out infinite;
 }
 .loader::after { animation-delay: 0.4s; }
 
-/* On ne peut pas vraiment mettre un span via CSS; le JS insère directement le HTML */
+
 @keyframes loader-blink {
     0%, 100% { opacity: 0.2; transform: scale(0.8); }
     50% { opacity: 1; transform: scale(1); }
@@ -350,12 +337,12 @@ body {
 }
 
 .input-wrapper:focus-within {
-    border-color: var(--amber-dim);
+    border-color: var(--phosphor-dim);
 }
 
 .input-prompt {
     padding: 0 8px 0 12px;
-    color: var(--amber);
+    color: var(--phosphor);
     font-size: 0.85rem;
     user-select: none;
     flex-shrink: 0;
@@ -370,7 +357,7 @@ body {
     font-family: 'Share Tech Mono', monospace;
     font-size: 0.88rem;
     padding: 12px 12px 12px 0;
-    caret-color: var(--amber);
+    caret-color: var(--phosphor);
 }
 
 #user-input::placeholder { color: var(--ivory-muted); }
@@ -380,8 +367,8 @@ body {
     align-items: center;
     gap: 8px;
     background: var(--ink-mid);
-    border: 1px solid var(--amber-dim);
-    color: var(--amber);
+    border: 1px solid var(--phosphor-dim);
+    color: var(--phosphor);
     font-family: 'Saira Condensed', sans-serif;
     font-weight: 600;
     font-size: 0.8rem;
@@ -395,8 +382,8 @@ body {
 }
 
 .send-btn:hover {
-    background: var(--amber-glow);
-    border-color: var(--amber);
+    background: rgba(46, 204, 113, 0.12);
+    border-color: var(--phosphor);
 }
 
 .send-btn:active { transform: scale(0.97); }
@@ -433,7 +420,7 @@ body {
     font-family: 'Saira Condensed', sans-serif;
     font-size: 0.6rem;
     font-weight: 600;
-    color: var(--amber-dim);
+    color: var(--phosphor-dim);
     letter-spacing: 0.25em;
     display: flex;
     justify-content: space-between;
@@ -455,8 +442,8 @@ body {
 }
 
 .upload-btn:hover {
-    border-color: var(--amber-dim);
-    color: var(--amber);
+    border-color: var(--phosphor-dim);
+    color: var(--phosphor);
 }
 
 .upload-status {
@@ -476,7 +463,7 @@ body {
     display: flex;
     align-items: center;
 }
-.refresh-btn:hover { color: var(--amber); }
+.refresh-btn:hover { color: var(--phosphor); }
 
 /* ─── LISTE FICHIERS ─────────────────────────────────────────────────────── */
 .file-list {
