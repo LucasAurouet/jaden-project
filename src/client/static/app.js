@@ -321,15 +321,6 @@ async function updateMetrics() {
         set('stat-gpu',    data.system?.gpu_percent,              ' %');
         set('stat-tokens', data.inference?.tg_tokens_per_second,  ' t/s');
 
-        if (data.system?.uptime_seconds != null) {
-            const u = data.system.uptime_seconds;
-            const h = Math.floor(u / 3600);
-            const m = Math.floor((u % 3600) / 60);
-            const s = Math.floor(u % 60);
-            document.getElementById('stat-uptime').textContent =
-                `${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`;
-        }
-
         // Redessine les charts
         updateChart('chart-cpu',    history.cpu);
         updateChart('chart-ram',    history.ram);
