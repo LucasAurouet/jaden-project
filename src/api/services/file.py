@@ -83,7 +83,10 @@ class FileService:
             }
 
         except Exception as e:
-            return {"status": "error", "message": f"Erreur lors de la lecture du fichier : {str(e)}"}
+            return {
+                "status": "error", 
+                "message": f"Erreur lors de la lecture du fichier : {str(e)}"
+            }
         
 
     @staticmethod
@@ -96,6 +99,7 @@ class FileService:
         """
         if not os.path.exists(WORKSPACE_DIR):
             return {
+                "status": "error",
                 "files": [],
                 "tree": "Workspace inexistant ou inaccessible."
             }
@@ -156,6 +160,28 @@ class FileService:
         build_and_list(WORKSPACE_DIR)
         
         return {
+            "status": "success",
             "files": files_list,
             "tree": "\n".join(tree_lines)
+        }
+    
+    @staticmethod
+    def feed_workspace_to_session(session_id: str, tree: str) -> Dict[str, Any]:
+        """
+        Injecte l'arborescence complète du workspace dans le contexte de l'IA.
+        Utile pour que l'IA ait une vue d'ensemble des fichiers disponibles.
+        """
+        
+        system_prompt = (
+            "[SYSTEME : Voici l'arborescence complète du workspace de Maia. "
+            "Utilise ces informations pour répondre aux questions futures de l'utilisateur.]\n\n"
+            f"{tree}"
+        )
+        
+        save_message(session_id, "system", system_prompt)
+        
+        return {
+            "status": "success",
+            "message": "L'arborescence du workspace a été injectée dans le contexte de l'IA.",
+            "tree": tree
         }

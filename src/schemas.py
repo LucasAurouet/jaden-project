@@ -9,3 +9,5 @@ class ComputeResponse(BaseModel):
     content: str
     status: str = "success"
 
+class InspectWorkspaceRequest(BaseModel):
+    session_id: str

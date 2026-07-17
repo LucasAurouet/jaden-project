@@ -2,6 +2,8 @@ from fastapi import APIRouter, Depends, UploadFile, File, Form, HTTPException
 from typing import List, Dict, Any
 from src.api.dependencies import verify_token
 from src.api.services.file import FileService
+from src.schemas import InspectWorkspaceRequest
+
 router = APIRouter(tags=["Workspace & Fichiers"])
 
 @router.post("/workspace/upload")
@@ -17,14 +19,22 @@ async def upload_file(
 
     return result
 
-@router.get("/workspace/inspect")
+@router.post("/workspace/inspect")
 async def list_files(
+    request: InspectWorkspaceRequest,
     _token: str = Depends(verify_token)
 ) -> List[Dict[str, Any]]:
     """
     Retourne la liste des documents présents dans le répertoire de travail de Maia.
-    Très utile pour l'affichage dans ton UI de fichiers disponibles.
     """
-    # On isole uniquement le tableau de fichiers requis par le contrat de réponse de l'UI
     workspace_data = FileService.list_workspace_files()
+
+    sync_result = FileService.feed_workspace_to_session(
+        session_id=request.session_id, 
+        tree_string=workspace_data["tree"]
+    )
+
+    if sync_result["status"] == "error":
+        print(f"Erreur de synchronisation SQLite : {sync_result['message']}")
+        
     return workspace_data["files"]

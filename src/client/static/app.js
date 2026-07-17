@@ -75,7 +75,7 @@ async function fetchWorkspaceFiles() {
     
     try {
         const response = await fetch(WORKSPACE_URL, {
-            method: "GET",
+            method: "POST",
             headers: {
                 "maia-token": MAIA_KEY
             }
