@@ -583,9 +583,17 @@ body {
 .cockpit-charts::-webkit-scrollbar-thumb { background: var(--ink-border); }
 
 .chart-block {
+    height: 90px;
+    flex: 0 0 auto;
     display: flex;
     flex-direction: column;
     gap: 4px;
+}
+
+.chart-block canvas {
+    display: block;
+    width: 100% !important;
+    height: 60px !important;
 }
 
 .chart-block__header {
