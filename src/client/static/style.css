@@ -1,8 +1,8 @@
 :root {
     --bg-color: #0b0b0e;
     --terminal-bg: #121620;
-    --neon-cyan: #00d6b3; 
-    --neon-magenta: #ff6f61;
+    --neon-green: #00ff00;
+    --neon-orange: #a62600; 
     --text-color: #05ffa1;
     --neon-yellow: #f0b90b; 
 }
@@ -34,7 +34,7 @@ body {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    border-bottom: 2px solid var(--neon-magenta);
+    border-bottom: 2px solid var(--neon-orange);
     padding-bottom: 5px;
 }
 
@@ -46,8 +46,8 @@ body {
 }
 
 .accent-text {
-    color: var(--neon-cyan);
-    text-shadow: 0 0 5px var(--neon-cyan);
+    color: var(--neon-green);
+    text-shadow: 0 0 5px var(--neon-green);
 }
 
 .status-bar {
@@ -58,8 +58,8 @@ body {
 .cyber-terminal {
     flex: 1;
     background-color: var(--terminal-bg);
-    border: 1px solid var(--neon-cyan);
-    box-shadow: 0 0 10px rgba(0, 214, 179, 0.15);
+    border: 1px solid var(--neon-green);
+    box-shadow: 0 0 10px rgba(0, 255, 0, 0.15);
     padding: 20px;
     overflow-y: auto;
     display: flex;
@@ -72,7 +72,7 @@ body {
     width: 6px;
 }
 .cyber-terminal::-webkit-scrollbar-thumb {
-    background: var(--neon-cyan);
+    background: var(--neon-green);
 }
 
 /* Messages */
@@ -84,15 +84,15 @@ body {
 }
 
 .message.user {
-    background: rgba(0, 240, 255, 0.1);
-    border-left: 3px solid var(--neon-cyan);
+    background: rgba(0, 255, 0, 0.1);
+    border-left: 3px solid var(--neon-green);
     align-self: flex-end;
     color: #fff;
 }
 
 .message.assistant {
     background: rgba(255, 111, 97, 0.15);
-    border-left: 3px solid var(--neon-magenta);
+    border-left: 3px solid var(--neon-orange);
     align-self: flex-start;
 }
 
@@ -105,7 +105,7 @@ body {
 #user-input {
     flex: 1;
     background: #14151b;
-    border: 1px solid var(--neon-cyan);
+    border: 1px solid var(--neon-green);
     color: #fff;
     padding: 15px;
     font-family: 'Share Tech Mono', monospace;
@@ -114,13 +114,13 @@ body {
 
 #user-input:focus {
     outline: none;
-    border-color: var(--neon-magenta);
+    border-color: var(--neon-orange);
     box-shadow: 0 0 8px rgba(255, 0, 85, 0.3);
 }
 
 /* Bouton Cyberpunk */
 .cyber-btn {
-    background: var(--neon-yellow);
+    background: var(--neon-orange);
     color: #000;
     border: none;
     font-family: 'Orbitron', sans-serif;
@@ -132,8 +132,8 @@ body {
 }
 
 .cyber-btn:hover {
-    background: var(--neon-cyan);
-    box-shadow: 0 0 10px var(--neon-cyan);
+    background: var(--neon-green);
+    box-shadow: 0 0 10px var(--neon-green);
 }
 
 .loader-container {
@@ -180,7 +180,7 @@ body {
      -18px -9px,0 -9px #0000,18px -9px,
      -18px  0   #0000,       18px  0  ,
      -18px  9px,0  9px #0000,18px  9px,
-     -18px 18px #0000,0 18px,18px 18px #0000;
+     -18px 18px #0000,0 18px,18px 18px;
   }
   40% {
    box-shadow: 
