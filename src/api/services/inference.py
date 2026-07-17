@@ -45,7 +45,7 @@ async def get_llama_metrics_from_api() -> LlamaMetrics:
     global _last_llama_metrics
     try:
         async with httpx.AsyncClient(timeout=1.0) as client:
-            r = await client.get(f"{LLAMA_BASE_URL}/metrics")
+            r = await client.get(f"http://127.0.0.1:8080/metrics")
             if r.status_code != 200:
                 return _last_llama_metrics
 

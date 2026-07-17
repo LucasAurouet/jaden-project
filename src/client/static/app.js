@@ -211,3 +211,21 @@ function showLoader() {
 
     return loaderId;
 }
+
+async function updateMetrics() {
+    try {
+        const response = await fetch('/v1/metrics/all'); 
+        if (!response.ok) return;
+        
+        const data = await response.json();
+        
+        if (document.getElementById('stat-ram')) document.getElementById('stat-ram').textContent = data.system.ram_usage;
+        if (document.getElementById('stat-gpu')) document.getElementById('stat-gpu').textContent = data.system.gpu_usage;
+        if (document.getElementById('stat-tokens')) document.getElementById('stat-tokens').textContent = data.inference.tokens_per_second;
+        
+    } catch (error) {
+        console.error("Erreur de rafraîchissement des métriques:", error);
+    }
+}
+
+setInterval(updateMetrics, 2000);
