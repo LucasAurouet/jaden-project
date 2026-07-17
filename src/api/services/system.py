@@ -8,9 +8,9 @@ try:
     pynvml.nvmlInit()
     NVML_AVAILABLE = True
     print("NVML library loaded successfully.")
-except Exception:
+except Exception as e:
     NVML_AVAILABLE = False
-    print("NVML library not available. GPU metrics will not be collected.")
+    print(f"NVML library not available. GPU metrics will not be collected. ({e})")
 
 
 def get_system_metrics() -> dict:
