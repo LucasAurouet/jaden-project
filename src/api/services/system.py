@@ -10,6 +10,7 @@ try:
     print("NVML library loaded successfully.")
 except Exception:
     NVML_AVAILABLE = False
+    print("NVML library not available. GPU metrics will not be collected.")
 
 
 def get_system_metrics() -> dict:
