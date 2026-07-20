@@ -227,11 +227,32 @@ function showLoader() {
     return loaderId;
 }
 
+
 function pushMetric(series, value) {
     series.push(value ?? null);
     if (series.length > HISTORY_SIZE) series.shift();
 }
 
+
+function makeChartData(series, color) {
+    return {
+        labels: new Array(HISTORY_SIZE).fill(''),
+        datasets: [{
+            data: series,
+            borderColor: color,
+            backgroundColor: color.replace(')', ', 0.08)').replace('rgb', 'rgba'),
+            fill: true,
+            spanGaps: true,
+        }]
+    };
+}
+
+const C_AMBER    = 'rgb(232, 200, 74)';
+const C_PHOSPHOR = 'rgb(74, 222, 128)';
+const C_BLOOD    = 'rgb(192, 57, 43)';
+const C_IVORY    = 'rgb(212, 206, 184)';
+
+const charts = {};
 
 // ─── CHART.JS CONFIG ────────────────────────────────────────────────────────
 const CHART_DEFAULTS = {
@@ -256,26 +277,6 @@ const CHART_DEFAULTS = {
     }
 };
 
-function makeChartData(series, color) {
-    return {
-        labels: new Array(HISTORY_SIZE).fill(''),
-        datasets: [{
-            data: series,
-            borderColor: color,
-            backgroundColor: color.replace(')', ', 0.08)').replace('rgb', 'rgba'),
-            fill: true,
-            spanGaps: true,
-        }]
-    };
-}
-
-// Couleurs issues de la palette Maia
-const C_AMBER    = 'rgb(232, 200, 74)';
-const C_PHOSPHOR = 'rgb(74, 222, 128)';
-const C_BLOOD    = 'rgb(192, 57, 43)';
-const C_IVORY    = 'rgb(212, 206, 184)';
-
-const charts = {};
 
 function initCharts() {
     const base = (id, series, color, max = 100) => {
@@ -310,7 +311,6 @@ async function updateMetrics() {
         pushMetric(history.gpu,    data.system?.gpu_percent ?? null);
         pushMetric(history.tokens, data.inference?.tg_tokens_per_second ?? null);
 
-        // Mise à jour des valeurs texte
         const set = (id, val, unit = '') => {
             const el = document.getElementById(id);
             if (el) el.textContent = val != null ? val.toFixed(1) + unit : '—';
@@ -321,7 +321,6 @@ async function updateMetrics() {
         set('stat-gpu',    data.system?.gpu_percent,              ' %');
         set('stat-tokens', data.inference?.tg_tokens_per_second,  ' t/s');
 
-        // Redessine les charts
         updateChart('chart-cpu',    history.cpu);
         updateChart('chart-ram',    history.ram);
         updateChart('chart-gpu',    history.gpu);
