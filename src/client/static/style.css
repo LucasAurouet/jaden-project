@@ -32,7 +32,7 @@ html, body {
 }
 
 body {
-    background: var(--retro-background);
+    background: linear-gradient(45deg, var(--retro-background), var(--retro-secondary));
     color: var(--retro-text);
     font-family: 'Share Tech Mono', monospace;
     font-size: 14px;
@@ -50,9 +50,9 @@ body {
     background: repeating-linear-gradient(
         to bottom,
         transparent,
-        transparent 2px,
-        rgba(0,0,0, var(--scan-opacity)) 2px,
-        rgba(0,0,0, var(--scan-opacity)) 4px
+        transparent 4px,
+        rgba(0,0,0, var(--scan-opacity)) 4px,
+        rgba(0,0,0, var(--scan-opacity)) 6px
     );
 }
 
@@ -64,13 +64,14 @@ body {
     z-index: 999;
     background: radial-gradient(
         ellipse at center,
-        transparent 60%,
-        rgba(0,0,0,0.55) 100%
+        transparent 65%,
+        rgba(0,0,0,0.65) 100%
     );
 }
 
 /* ─── STRUCTURE PRINCIPALE ───────────────────────────────────────────────── */
 .app-shell {
+    background: linear-gradient(135deg, var(--retro-background), var(--retro-primary));
     position: relative;
     z-index: 1;
     height: 100vh;
@@ -132,6 +133,7 @@ body {
     font-size: 0.7rem;
     color: var(--retro-text);
     letter-spacing: 0.1em;
+    animation: pulse 2s infinite;
 }
 
 .status-dot {
@@ -233,6 +235,7 @@ body {
     border-right: 2px solid var(--retro-primary);
     color: var(--retro-text);
     clip-path: polygon(0 0, 100% 0, 100% 100%, 8px 100%, 0 calc(100% - 8px));
+    animation: pulse 3s infinite;
 }
 
 .message.assistant {
@@ -291,6 +294,12 @@ body {
 }
 .message.assistant li { margin: 0.2em 0; }
 .message.assistant a { color: var(--retro-primary); text-decoration: underline; text-underline-offset: 3px; }
+
+@keyframes pulse {
+    0% { transform: scale(0.9); opacity: 1; }
+    50% { transform: scale(1.05); opacity: 0.7; }
+    100% { transform: scale(0.9); opacity: 1; }
+}
 
 /* ─── LOADER ─────────────────────────────────────────────────────────────── */
 .loader-container {
