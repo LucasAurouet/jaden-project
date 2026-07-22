@@ -15,6 +15,12 @@
     --blood-bright:#c0392b;
 
     --scan-opacity: 0.04;
+
+    /* Nouvelles couleurs pour le style retrofuturiste */
+    --retro-primary: #0070FF;
+    --retro-secondary: #FFD700;
+    --retro-background: #2b2b2b;
+    --retro-text: #d8d8d8;
 }
 
 /* ─── RESET & BASE ───────────────────────────────────────────────────────── */
@@ -26,8 +32,8 @@ html, body {
 }
 
 body {
-    background: var(--ink);
-    color: var(--ivory);
+    background: var(--retro-background);
+    color: var(--retro-text);
     font-family: 'Share Tech Mono', monospace;
     font-size: 14px;
     line-height: 1.5;
@@ -106,13 +112,13 @@ body {
 .title-main {
     font-family: 'Zen Dots', sans-serif;
     font-size: 1.4rem;
-    color: var(--phosphor);
+    color: var(--retro-primary);
     letter-spacing: 0.15em;
 }
 
 .title-sub {
     font-size: 0.65rem;
-    color: var(--ivory-dim);
+    color: var(--retro-text);
     letter-spacing: 0.25em;
     margin-top: 2px;
 }
@@ -124,7 +130,7 @@ body {
     font-family: 'Saira Condensed', sans-serif;
     font-weight: 300;
     font-size: 0.7rem;
-    color: var(--ivory-dim);
+    color: var(--retro-text);
     letter-spacing: 0.1em;
 }
 
@@ -132,7 +138,7 @@ body {
     width: 6px;
     height: 6px;
     border-radius: 50%;
-    background: var(--phosphor);
+    background: var(--retro-primary);
     animation: pulse-dot 2.5s ease-in-out infinite;
 }
 
@@ -167,7 +173,7 @@ body {
     display: flex;
     flex-direction: column;
     border: 1px solid var(--ink-border);
-    background: var(--ink-raised);
+    background: var(--retro-background);
     overflow: hidden;
     clip-path: polygon(0 0, calc(100% - 16px) 0, 100% 16px, 100% 100%, 0 100%);
 }
@@ -177,7 +183,7 @@ body {
     justify-content: space-between;
     align-items: center;
     padding: 5px 14px;
-    background: var(--ink-mid);
+    background: var(--retro-background);
     border-bottom: 1px solid var(--ink-border);
     flex-shrink: 0;
 }
@@ -186,13 +192,13 @@ body {
     font-family: 'Saira Condensed', sans-serif;
     font-size: 0.65rem;
     font-weight: 600;
-    color: var(--phosphor-dim);
+    color: var(--retro-primary);
     letter-spacing: 0.2em;
 }
 
 .frame-coords {
     font-size: 0.65rem;
-    color: var(--ivory-muted);
+    color: var(--retro-text);
     letter-spacing: 0.1em;
 }
 
@@ -209,7 +215,7 @@ body {
 .chat-viewport::-webkit-scrollbar { width: 4px; }
 .chat-viewport::-webkit-scrollbar-track { background: transparent; }
 .chat-viewport::-webkit-scrollbar-thumb { background: var(--ink-border); }
-.chat-viewport::-webkit-scrollbar-thumb:hover { background: var(--phosphor-dim); }
+.chat-viewport::-webkit-scrollbar-thumb:hover { background: var(--retro-primary); }
 
 /* ─── MESSAGES ───────────────────────────────────────────────────────────── */
 .message {
@@ -222,10 +228,10 @@ body {
 
 .message.user {
     align-self: flex-end;
-    background: var(--ink-mid);
+    background: var(--retro-background);
     border: 1px solid var(--ink-border);
-    border-right: 2px solid var(--phosphor);
-    color: var(--ivory);
+    border-right: 2px solid var(--retro-primary);
+    color: var(--retro-text);
     clip-path: polygon(0 0, 100% 0, 100% 100%, 8px 100%, 0 calc(100% - 8px));
 }
 
@@ -233,8 +239,8 @@ body {
     align-self: flex-start;
     background: rgba(46, 204, 113, 0.04);
     border: 1px solid var(--ink-border);
-    border-left: 2px solid var(--phosphor-dim);
-    color: var(--ivory);
+    border-left: 2px solid var(--retro-primary);
+    color: var(--retro-text);
     clip-path: polygon(0 0, 100% 0, 100% calc(100% - 8px), calc(100% - 8px) 100%, 0 100%);
 }
 
@@ -246,27 +252,27 @@ body {
 .message.assistant h3 {
     font-family: 'Saira Condensed', sans-serif;
     font-weight: 600;
-    color: var(--phosphor);
+    color: var(--retro-primary);
     letter-spacing: 0.1em;
     margin: 0.8em 0 0.4em;
 }
 .message.assistant h1 { font-size: 1.1rem; }
 .message.assistant h2 { font-size: 1rem; }
 .message.assistant h3 { font-size: 0.9rem; }
-.message.assistant strong { color: var(--phosphor); font-weight: normal; }
-.message.assistant em { color: var(--ivory-dim); font-style: italic; }
+.message.assistant strong { color: var(--retro-primary); font-weight: normal; }
+.message.assistant em { color: var(--retro-text); font-style: italic; }
 .message.assistant code {
-    background: var(--ink-mid);
+    background: var(--retro-background);
     border: 1px solid var(--ink-border);
-    color: var(--phosphor);
+    color: var(--retro-primary);
     padding: 1px 5px;
     font-family: 'Share Tech Mono', monospace;
     font-size: 0.85em;
 }
 .message.assistant pre {
-    background: var(--ink);
+    background: var(--retro-background);
     border: 1px solid var(--ink-border);
-    border-left: 2px solid var(--phosphor-dim);
+    border-left: 2px solid var(--retro-primary);
     padding: 12px;
     overflow-x: auto;
     margin: 0.6em 0;
@@ -276,7 +282,7 @@ body {
     border: none;
     padding: 0;
     font-size: 0.82rem;
-    color: var(--ivory);
+    color: var(--retro-text);
 }
 .message.assistant ul,
 .message.assistant ol {
@@ -284,14 +290,14 @@ body {
     margin: 0.4em 0;
 }
 .message.assistant li { margin: 0.2em 0; }
-.message.assistant a { color: var(--phosphor); text-decoration: underline; text-underline-offset: 3px; }
+.message.assistant a { color: var(--retro-primary); text-decoration: underline; text-underline-offset: 3px; }
 
 /* ─── LOADER ─────────────────────────────────────────────────────────────── */
 .loader-container {
     display: flex;
     align-items: center;
     gap: 8px;
-    color: var(--ivory-dim);
+    color: var(--retro-text);
     font-size: 0.75rem;
     letter-spacing: 0.15em;
 }
@@ -309,7 +315,7 @@ body {
     display: inline-block;
     width: 4px;
     height: 4px;
-    background: var(--phosphor);
+    background: var(--retro-primary);
     animation: loader-blink 1.2s ease-in-out infinite;
 }
 .loader::after { animation-delay: 0.4s; }
@@ -331,18 +337,18 @@ body {
     flex: 1;
     display: flex;
     align-items: center;
-    background: var(--ink-raised);
+    background: var(--retro-background);
     border: 1px solid var(--ink-border);
     transition: border-color 0.15s;
 }
 
 .input-wrapper:focus-within {
-    border-color: var(--phosphor-dim);
+    border-color: var(--retro-primary);
 }
 
 .input-prompt {
     padding: 0 8px 0 12px;
-    color: var(--phosphor);
+    color: var(--retro-primary);
     font-size: 0.85rem;
     user-select: none;
     flex-shrink: 0;
@@ -353,22 +359,22 @@ body {
     background: none;
     border: none;
     outline: none;
-    color: var(--ivory);
+    color: var(--retro-text);
     font-family: 'Share Tech Mono', monospace;
     font-size: 0.88rem;
     padding: 12px 12px 12px 0;
-    caret-color: var(--phosphor);
+    caret-color: var(--retro-primary);
 }
 
-#user-input::placeholder { color: var(--ivory-muted); }
+#user-input::placeholder { color: var(--retro-text); }
 
 .send-btn {
     display: flex;
     align-items: center;
     gap: 8px;
-    background: var(--ink-mid);
-    border: 1px solid var(--phosphor-dim);
-    color: var(--phosphor);
+    background: var(--retro-background);
+    border: 1px solid var(--retro-primary);
+    color: var(--retro-primary);
     font-family: 'Saira Condensed', sans-serif;
     font-weight: 600;
     font-size: 0.8rem;
@@ -383,7 +389,7 @@ body {
 
 .send-btn:hover {
     background: rgba(46, 204, 113, 0.12);
-    border-color: var(--phosphor);
+    border-color: var(--retro-primary);
 }
 
 .send-btn:active { transform: scale(0.97); }
@@ -396,7 +402,7 @@ body {
     flex-direction: column;
     gap: 0;
     border: 1px solid var(--ink-border);
-    background: var(--ink-raised);
+    background: var(--retro-background);
     overflow: hidden;
     clip-path: polygon(0 0, 100% 0, 100% 100%, 16px 100%, 0 calc(100% - 16px));
 }
@@ -420,7 +426,7 @@ body {
     font-family: 'Saira Condensed', sans-serif;
     font-size: 0.6rem;
     font-weight: 600;
-    color: var(--phosphor-dim);
+    color: var(--retro-primary);
     letter-spacing: 0.25em;
     display: flex;
     justify-content: space-between;
@@ -432,9 +438,9 @@ body {
     align-items: center;
     gap: 8px;
     padding: 8px 10px;
-    background: var(--ink-mid);
+    background: var(--retro-background);
     border: 1px solid var(--ink-border);
-    color: var(--ivory-dim);
+    color: var(--retro-text);
     font-family: 'Share Tech Mono', monospace;
     font-size: 0.75rem;
     cursor: pointer;
@@ -442,13 +448,13 @@ body {
 }
 
 .upload-btn:hover {
-    border-color: var(--phosphor-dim);
-    color: var(--phosphor);
+    border-color: var(--retro-primary);
+    color: var(--retro-primary);
 }
 
 .upload-status {
     font-size: 0.72rem;
-    color: var(--ivory-dim);
+    color: var(--retro-text);
     min-height: 16px;
     display: block;
 }
@@ -456,14 +462,14 @@ body {
 .refresh-btn {
     background: none;
     border: none;
-    color: var(--ivory-muted);
+    color: var(--retro-text);
     cursor: pointer;
     padding: 2px;
     transition: color 0.15s;
     display: flex;
     align-items: center;
 }
-.refresh-btn:hover { color: var(--phosphor); }
+.refresh-btn:hover { color: var(--retro-primary); }
 
 /* ─── LISTE FICHIERS ─────────────────────────────────────────────────────── */
 .file-list {
@@ -487,7 +493,7 @@ body {
 
 .workspace-file-name {
     font-size: 0.72rem;
-    color: var(--ivory-dim);
+    color: var(--retro-text);
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
@@ -497,13 +503,13 @@ body {
 
 .workspace-file-size {
     font-size: 0.65rem;
-    color: var(--ivory-muted);
+    color: var(--retro-text);
     flex-shrink: 0;
 }
 
 .workspace-empty-message {
     font-size: 0.72rem;
-    color: var(--ivory-muted);
+    color: var(--retro-text);
     padding: 12px 0;
     font-style: italic;
     text-align: center;
@@ -515,7 +521,7 @@ body {
     display: flex;
     flex-direction: column;
     gap: 5px;
-    background: var(--ink);
+    background: var(--retro-background);
     flex-shrink: 0;
 }
 
@@ -528,24 +534,24 @@ body {
 }
 
 .sys-stat__label {
-    color: var(--ivory-muted);
+    color: var(--retro-text);
     font-family: 'Saira Condensed', sans-serif;
     font-weight: 300;
 }
 
 .sys-stat__value {
-    color: var(--ivory-dim);
+    color: var(--retro-primary);
     font-family: 'Share Tech Mono', monospace;
 }
 
 .sys-stat__value--live {
-    color: var(--phosphor);
+    color: var(--retro-primary);
 }
 
 /* ─── HIGHLIGHT.JS override — harmonise avec la palette ─────────────────── */
 .hljs {
     background: transparent !important;
-    color: var(--ivory) !important;
+    color: var(--retro-text) !important;
 }
 
 /* ─── COCKPIT PANEL ──────────────────────────────────────────────────────── */
@@ -555,7 +561,7 @@ body {
     display: flex;
     flex-direction: column;
     border: 1px solid var(--ink-border);
-    background: var(--ink-raised);
+    background: var(--retro-background);
     overflow: hidden;
     clip-path: polygon(0 0, calc(100% - 16px) 0, 100% 16px, 100% 100%, 0 100%);
 }
@@ -565,7 +571,7 @@ body {
     justify-content: space-between;
     align-items: center;
     padding: 5px 14px;
-    background: var(--ink-mid);
+    background: var(--retro-background);
     border-bottom: 1px solid var(--ink-border);
     flex-shrink: 0;
 }
@@ -606,19 +612,18 @@ body {
     font-family: 'Saira Condensed', sans-serif;
     font-size: 0.6rem;
     font-weight: 600;
-    color: var(--amber-dim);
+    color: var(--retro-primary);
     letter-spacing: 0.2em;
 }
 
 .chart-value {
     font-size: 0.72rem;
-    color: var(--ivory);
+    color: var(--retro-text);
     font-family: 'Share Tech Mono', monospace;
 }
 
 .cockpit-panel__footer {
     padding: 10px 12px;
     border-top: 1px solid var(--ink-border);
-    background: var(--ink);
+    background: var(--retro-background);
     flex-shrink: 0;
-}
