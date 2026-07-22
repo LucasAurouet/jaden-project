@@ -627,3 +627,4 @@ body {
     border-top: 1px solid var(--ink-border);
     background: var(--retro-background);
     flex-shrink: 0;
+}
