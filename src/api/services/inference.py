@@ -3,8 +3,6 @@ import httpx
 from config import LLM_BASE_URL, LLM_TIMEOUT
 from src.schemas import LlamaMetrics
 
-# Un seul client pour toute la durée de vie du serveur : les connexions TCP
-# vers llama-server sont réutilisées au lieu d'être rouvertes à chaque requête.
 _client: httpx.AsyncClient | None = None
 
 
@@ -21,8 +19,24 @@ async def stop_client():
         await _client.aclose()
 
 
-def get_client() -> httpx.AsyncClient:
-    return _client
+class UpstreamUnavailable(Exception):
+    """llama-server ne répond pas (arrêté, mauvais port...)."""
+
+
+class UpstreamTimeout(Exception):
+    """llama-server n'a pas répondu dans le délai imparti."""
+
+
+async def forward(method: str, path: str, body: bytes | None = None) -> httpx.Response:
+    request = _client.build_request(
+        method, path, content=body, headers={"Content-Type": "application/json"}
+    )
+    try:
+        return await _client.send(request, stream=True)
+    except httpx.ConnectError as e:
+        raise UpstreamUnavailable() from e
+    except httpx.TimeoutException as e:
+        raise UpstreamTimeout() from e
 
 
 async def get_llama_metrics_from_api() -> LlamaMetrics:

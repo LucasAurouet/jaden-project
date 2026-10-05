@@ -20,8 +20,6 @@ if __name__ == "__main__":
         import uvicorn
         from src.client.web import app
         print(f"Interface MAIA sur http://127.0.0.1:{CLIENT_PORT}")
-        # 127.0.0.1 uniquement : l'interface et le workspace ne concernent
-        # que ce poste, aucune autre machine ne doit pouvoir s'y connecter.
         uvicorn.run(app, host="127.0.0.1", port=CLIENT_PORT)
 
     elif mode == "cli":
