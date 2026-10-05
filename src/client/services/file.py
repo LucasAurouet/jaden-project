@@ -1,11 +1,13 @@
 import os
+import asyncio
 from fastapi import UploadFile
-from typing import List, Dict, Any
-from src.api.services.database import save_message
+from typing import Dict, Any
+from config import WORKSPACE_DIR as _WORKSPACE_PATH
+from src.client.services.database import save_attachment
 
-WORKSPACE_DIR = r"C:\Users\Lucas\Documents\maia"
+WORKSPACE_DIR = str(_WORKSPACE_PATH)
 ALLOWED_EXTENSIONS = {".txt", ".md", ".py", ".js", ".json", ".html", ".css", ".csv", ".xml", ".ini", ".yaml", ".yml"}
-MAX_FILE_SIZE = 10 * 1024 * 1024
+MAX_FILE_SIZE = 512 * 1024
 
 IGNORE_DIRS = {
     "venv", ".venv", "env", ".env", 
@@ -29,7 +31,7 @@ class FileService:
     async def feed_file_to_session(file: UploadFile, session_id: str) -> Dict[str, Any]:
         """
         Lit le fichier binaire entrant, le décode en texte UTF-8,
-        et l'enregistre directement dans l'historique de discussion SQLite.
+        et l'enregistre comme pièce jointe de la session.
         """
         raw_filename = file.filename
         clean_filename = os.path.basename(raw_filename)
@@ -51,7 +53,7 @@ class FileService:
             if total_size > MAX_FILE_SIZE:
                 return {
                     "status": "error", 
-                    "message": "Le fichier est trop volumineux pour être injecté directement dans le contexte (max 2 Mo)."
+                    "message": f"Le fichier est trop volumineux pour être injecté directement dans le contexte (max {MAX_FILE_SIZE // 1024} Ko)."
                 }
 
             try:
@@ -65,15 +67,7 @@ class FileService:
                         "message": "Impossible de décoder le fichier. Assurez-vous qu'il s'agit d'un fichier texte lisible."
                     }
 
-            system_prompt = (
-                f"[SYSTEME : L'utilisateur vient de téléverser le fichier '{clean_filename}'. "
-                f"Voici son contenu pour t'aider à répondre aux questions futures de l'utilisateur :\n\n"
-                f"--- DÉBUT DU FICHIER : {clean_filename} ---\n"
-                f"{file_content}\n"
-                f"--- FIN DU FICHIER : {clean_filename} ---]"
-            )
-
-            save_message(session_id, "system", system_prompt)
+            await asyncio.to_thread(save_attachment, session_id, clean_filename, file_content)
 
             return {
                 "status": "success",
@@ -163,25 +157,4 @@ class FileService:
             "status": "success",
             "files": files_list,
             "tree": "\n".join(tree_lines)
-        }
-    
-    @staticmethod
-    def feed_workspace_to_session(session_id: str, tree_string: str) -> Dict[str, Any]:
-        """
-        Injecte l'arborescence complète du workspace dans le contexte de l'IA.
-        Utile pour que l'IA ait une vue d'ensemble des fichiers disponibles.
-        """
-        
-        system_prompt = (
-            "[SYSTEME : Voici l'arborescence complète du workspace de Maia. "
-            "Utilise ces informations pour répondre aux questions futures de l'utilisateur.]\n\n"
-            f"{tree_string}"
-        )
-        
-        save_message(session_id, "system", system_prompt)
-        
-        return {
-            "status": "success",
-            "message": "L'arborescence du workspace a été injectée dans le contexte de l'IA.",
-            "tree": tree_string
         }

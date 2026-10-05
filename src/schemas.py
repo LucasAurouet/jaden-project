@@ -9,9 +9,6 @@ class ComputeResponse(BaseModel):
     content: str
     status: str = "success"
 
-class InspectWorkspaceRequest(BaseModel):
-    session_id: str
-
 class LlamaMetrics(BaseModel):
     tg_tokens_per_sec: float | None = None    
     tg_tokens_per_sec_3s: float | None = None   
@@ -19,7 +16,7 @@ class LlamaMetrics(BaseModel):
     n_decoded: int | None = None                
     n_prompt_tokens: int | None = None          
     n_total_tokens: int | None = None           
-    kv_cache_hit: float | None = None           
+    kv_cache_usage: float | None = None
     graphs_reused: int | None = None
     total_time_ms: float | None = None
     truncated: bool = False

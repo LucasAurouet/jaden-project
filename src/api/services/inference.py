@@ -1,64 +1,47 @@
-import httpx
-from typing import List, Dict
 import re
 import httpx
+from config import LLM_BASE_URL, LLM_TIMEOUT
 from src.schemas import LlamaMetrics
 
-_last_llama_metrics = LlamaMetrics()
+# Un seul client pour toute la durée de vie du serveur : les connexions TCP
+# vers llama-server sont réutilisées au lieu d'être rouvertes à chaque requête.
+_client: httpx.AsyncClient | None = None
 
-async def run_inference(
-    messages : List[Dict[str, str]],
-    url: str
-) -> str:
 
-    payload = {
-        "messages": messages
-    }
+async def start_client():
+    global _client
+    _client = httpx.AsyncClient(
+        base_url=LLM_BASE_URL,
+        timeout=httpx.Timeout(LLM_TIMEOUT, connect=5.0),
+    )
 
-    try:
-        async with httpx.AsyncClient(timeout=120.0) as client:
-            response = await client.post(url, json=payload)
-            
-            response.raise_for_status()
-            
-            data = response.json()
-            return data["choices"][0]["message"]["content"]
 
-    except httpx.ConnectError:
-        return "[Erreur] Impossible de se connecter au serveur llama.cpp. Vérifiez que le serveur est bien lancé et que le port est correct."
-        
-    except httpx.TimeoutException:
-        return "[Erreur] Le serveur llama.cpp a mis trop de temps à répondre (Timeout)."
-        
-    except httpx.HTTPStatusError as e:
-        return f"[Erreur HTTP {e.response.status_code}] Le serveur a renvoyé une erreur : {e.response.text}"
-        
-    except (KeyError, ValueError):
-        return "[Erreur] La réponse du serveur n'est pas au format attendu."
-        
-    except Exception as e:
-        return f"[Erreur inattendue] {str(e)}"
+async def stop_client():
+    if _client is not None:
+        await _client.aclose()
+
+
+def get_client() -> httpx.AsyncClient:
+    return _client
 
 
 async def get_llama_metrics_from_api() -> LlamaMetrics:
-    """Requête /metrics Prometheus de llama-server."""
-    global _last_llama_metrics
+    """Lit l'endpoint Prometheus /metrics de llama-server (lancé avec --metrics)."""
     try:
-        async with httpx.AsyncClient(timeout=1.0) as client:
-            r = await client.get(f"http://127.0.0.1:8080/metrics")
-            if r.status_code != 200:
-                return _last_llama_metrics
+        r = await _client.get("/metrics", timeout=1.0)
+        if r.status_code != 200:
+            return LlamaMetrics()
+    except httpx.HTTPError:
+        return LlamaMetrics()
 
-            text = r.text
-            def extract(key: str) -> float | None:
-                m = re.search(rf"^{re.escape(key)}\s+([\d.]+)", text, re.MULTILINE)
-                return float(m.group(1)) if m else None
+    text = r.text
 
-            kv_ratio = extract("llamacpp:kv_cache_usage_ratio")
-            if kv_ratio is not None:
-                _last_llama_metrics.kv_cache_hit = kv_ratio
+    def extract(key: str) -> float | None:
+        m = re.search(rf"^{re.escape(key)}\s+(\S+)", text, re.MULTILINE)
+        return float(m.group(1)) if m else None
 
-    except Exception:
-        pass 
-
-    return _last_llama_metrics
+    return LlamaMetrics(
+        tg_tokens_per_sec=extract("llamacpp:predicted_tokens_seconds"),
+        pp_tokens_per_sec=extract("llamacpp:prompt_tokens_seconds"),
+        kv_cache_usage=extract("llamacpp:kv_cache_usage_ratio"),
+    )

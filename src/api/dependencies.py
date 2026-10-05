@@ -1,23 +1,29 @@
+import secrets
 from fastapi import Depends, HTTPException
-from fastapi.security import APIKeyHeader
+from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from config import MAIA_KEY
 
-# Déclaration de l'en-tête de sécurité
-_api_key_header = APIKeyHeader(name="maia-token", auto_error=False)
+# Même convention que l'API OpenAI : "Authorization: Bearer <clé>".
+# N'importe quelle bibliothèque compatible OpenAI peut ainsi s'authentifier.
+_bearer = HTTPBearer(auto_error=False)
 
-async def verify_token(api_key: str = Depends(_api_key_header)) -> str:
+async def verify_token(credentials: HTTPAuthorizationCredentials | None = Depends(_bearer)) -> str:
     """
-    Vérifie la validité du token d'API Maia passé dans les en-têtes HTTP.
-    Lève une erreur 403 si le jeton est manquant ou invalide.
+    Vérifie la clé Maia passée dans l'en-tête Authorization.
+    Lève une erreur 401 si elle est manquante ou invalide.
     """
-    if not api_key:
+    if credentials is None:
         raise HTTPException(
-            status_code=403, 
-            detail="Clé de sécurité MAIA manquante dans les en-têtes (maia-token)."
+            status_code=401,
+            detail="Clé MAIA manquante (en-tête Authorization: Bearer <clé>).",
+            headers={"WWW-Authenticate": "Bearer"},
         )
-    if api_key != MAIA_KEY:
+    # compare_digest prend un temps constant : on ne peut pas deviner la clé
+    # caractère par caractère en mesurant le temps de réponse.
+    if not MAIA_KEY or not secrets.compare_digest(credentials.credentials, MAIA_KEY):
         raise HTTPException(
-            status_code=403, 
-            detail="Clé MAIA invalide ou expirée."
+            status_code=401,
+            detail="Clé MAIA invalide.",
+            headers={"WWW-Authenticate": "Bearer"},
         )
-    return api_key
+    return credentials.credentials

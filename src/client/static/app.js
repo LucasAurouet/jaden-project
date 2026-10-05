@@ -1,8 +1,7 @@
 const SESSION_ID = 'session-' + Date.now() + '-' + Math.random().toString(36).substring(2, 11);
-const API_URL = "/v1/compute";
-const UPLOAD_URL = "/v1/workspace/upload";
-const WORKSPACE_URL = "/v1/workspace/inspect";
-const MAIA_KEY = "maia"; 
+const API_URL = "/api/compute";
+const UPLOAD_URL = "/api/workspace/upload";
+const WORKSPACE_URL = "/api/workspace/inspect";
 
 const chatBox = document.getElementById("chat-box");
 const userInput = document.getElementById("user-input");
@@ -66,7 +65,6 @@ async function uploadFile(file) {
     try {
         const response = await fetch(UPLOAD_URL, {
             method: "POST",
-            headers: { "maia-token": MAIA_KEY },
             body: formData
         });
 
@@ -91,14 +89,7 @@ async function fetchWorkspaceFiles() {
     if (!fileListContainer) return;
     
     try {
-        const response = await fetch(WORKSPACE_URL, {
-            method: "POST",
-            headers: {
-                "Content-Type": "application/json",
-                "maia-token": MAIA_KEY
-            },
-            body: JSON.stringify({ session_id: SESSION_ID })
-        }); 
+        const response = await fetch(WORKSPACE_URL);
 
         if (!response.ok) throw new Error(`Erreur HTTP: ${response.status}`);
         
@@ -125,16 +116,18 @@ function renderWorkspaceFiles(files) {
 
         li.classList.add("workspace-file-item");
 
-        const sizeKB = (file.size / 1024).toFixed(1);
-        
-        li.innerHTML = `
-            <span class="workspace-file-name" title="${file.name}">
-                ${file.name}
-            </span>
-            <span class="workspace-file-size">
-                ${sizeKB} Ko
-            </span>
-        `;
+        // textContent et non innerHTML : un fichier nommé "<img onerror=...>"
+        // serait sinon interprété comme du HTML.
+        const name = document.createElement("span");
+        name.className = "workspace-file-name";
+        name.title = file.name;
+        name.textContent = file.name;
+
+        const size = document.createElement("span");
+        size.className = "workspace-file-size";
+        size.textContent = `${(file.size / 1024).toFixed(1)} Ko`;
+
+        li.append(name, size);
         fileListContainer.appendChild(li);
     });
 }
@@ -152,10 +145,7 @@ async function sendMessage() {
     try {
         const response = await fetch(API_URL, {
             method: "POST",
-            headers: {
-                "Content-Type": "application/json",
-                "maia-token": MAIA_KEY
-            },
+            headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
                 prompt: text,
                 session_id: SESSION_ID
@@ -165,7 +155,6 @@ async function sendMessage() {
         if (!response.ok) throw new Error(`Status: ${response.status}`);
         
         const data = await response.json();
-        console.log("Contrat respecté :", data); 
 
         const loaderElement = document.getElementById(currentLoaderId);
         if (loaderElement) {
@@ -196,7 +185,9 @@ function appendMessage(text, sender) {
     msgDiv.classList.add("message", sender);
 
     if (sender === "assistant") {
-        msgDiv.innerHTML = marked.parse(text);
+        // La sortie du LLM n'est pas fiable (elle peut reprendre du contenu
+        // injecté via un fichier) : on nettoie le HTML avant de l'insérer.
+        msgDiv.innerHTML = DOMPurify.sanitize(marked.parse(text));
         msgDiv.querySelectorAll('pre code').forEach(el => hljs.highlightElement(el));
     } else {
         msgDiv.textContent = text; 
@@ -301,7 +292,7 @@ function updateChart(id, series) {
 // ─── METRICS POLL ───────────────────────────────────────────────────────────
 async function updateMetrics() {
     try {
-        const response = await fetch('/v1/metrics/all');
+        const response = await fetch('/api/metrics');
         if (!response.ok) return;
         const data = await response.json();
 
@@ -309,7 +300,7 @@ async function updateMetrics() {
         pushMetric(history.cpu,    data.system?.cpu_percent ?? null);
         pushMetric(history.ram,    data.system?.ram_percent ?? null);
         pushMetric(history.gpu,    data.system?.gpu_percent ?? null);
-        pushMetric(history.tokens, data.inference?.tg_tokens_per_second ?? null);
+        pushMetric(history.tokens, data.inference?.tg_tokens_per_sec ?? null);
 
         const set = (id, val, unit = '') => {
             const el = document.getElementById(id);
@@ -319,7 +310,7 @@ async function updateMetrics() {
         set('stat-cpu',    data.system?.cpu_percent,              ' %');
         set('stat-ram',    data.system?.ram_percent,              ' %');
         set('stat-gpu',    data.system?.gpu_percent,              ' %');
-        set('stat-tokens', data.inference?.tg_tokens_per_second,  ' t/s');
+        set('stat-tokens', data.inference?.tg_tokens_per_sec,     ' t/s');
 
         updateChart('chart-cpu',    history.cpu);
         updateChart('chart-ram',    history.ram);

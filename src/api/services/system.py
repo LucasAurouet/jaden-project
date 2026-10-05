@@ -17,7 +17,9 @@ def get_system_metrics() -> dict:
     mem = psutil.virtual_memory()
 
     result = {
-        "cpu_percent": psutil.cpu_percent(interval=0.1),
+        # interval=None : valeur calculée depuis l'appel précédent, sans bloquer.
+        # (interval=0.1 figeait tout le serveur 100 ms à chaque sondage.)
+        "cpu_percent": psutil.cpu_percent(interval=None),
         "ram_used_gb": round(mem.used / 1024**3, 2),
         "ram_total_gb": round(mem.total / 1024**3, 2),
         "ram_percent": mem.percent,
