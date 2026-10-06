@@ -36,8 +36,6 @@ class ChatService:
 
     @staticmethod
     async def process_compute(session_id: str, prompt: str) -> ComputeResponse:
-        # sqlite3 et os.listdir sont bloquants : on les exécute dans un thread
-        # pour ne pas figer la boucle asyncio (et donc les autres requêtes).
         history, attachments, workspace = await asyncio.gather(
             asyncio.to_thread(get_chat_history, session_id),
             asyncio.to_thread(get_attachments, session_id),
@@ -53,8 +51,6 @@ class ChatService:
         try:
             answer = await chat_completion(messages)
         except InferenceError as e:
-            # Rien n'est sauvegardé : l'utilisateur peut renvoyer sa question
-            # sans laisser un message "user" orphelin dans l'historique.
             return ComputeResponse(session_id=session_id, content=str(e), status="error")
 
         await asyncio.to_thread(save_exchange, session_id, prompt, answer)

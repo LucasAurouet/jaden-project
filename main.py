@@ -1,5 +1,4 @@
 import sys
-import asyncio
 from config import BIND_HOST, SERVER_PORT, CLIENT_PORT
 
 USAGE = """Usage: python main.py [server|client|cli]
@@ -21,10 +20,6 @@ if __name__ == "__main__":
         from src.client.web import app
         print(f"Interface MAIA sur http://127.0.0.1:{CLIENT_PORT}")
         uvicorn.run(app, host="127.0.0.1", port=CLIENT_PORT)
-
-    elif mode == "cli":
-        from src.client.cli import start_cli
-        asyncio.run(start_cli())
 
     else:
         print(USAGE)

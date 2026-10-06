@@ -9,8 +9,6 @@ class InferenceError(Exception):
     """Le serveur d'inférence n'a pas pu produire de réponse."""
 
 
-# Client HTTP partagé vers le serveur d'inférence distant. La clé est ajoutée
-# ici, côté Python : elle n'arrive jamais dans le navigateur.
 _client: httpx.AsyncClient | None = None
 
 
