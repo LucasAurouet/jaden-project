@@ -1,6 +1,6 @@
 import httpx
 from typing import List, Dict, Any
-from config import SERVER_IP, SERVER_PORT, MAIA_KEY, LLM_TIMEOUT
+from config import SERVER_IP, SERVER_PORT, HOMN_KEY, LLM_TIMEOUT
 
 SERVER_URL = f"http://{SERVER_IP}:{SERVER_PORT}"
 
@@ -16,7 +16,7 @@ async def start_client():
     global _client
     _client = httpx.AsyncClient(
         base_url=SERVER_URL,
-        headers={"Authorization": f"Bearer {MAIA_KEY}"},
+        headers={"Authorization": f"Bearer {HOMN_KEY}"},
         timeout=httpx.Timeout(LLM_TIMEOUT + 10, connect=5.0),
     )
 
@@ -35,7 +35,7 @@ async def chat_completion(messages: List[Dict[str, str]]) -> str:
         raise InferenceError("Le serveur d'inférence a mis trop de temps à répondre.") from e
 
     if response.status_code == 401:
-        raise InferenceError("Clé MAIA refusée par le serveur (vérifiez MAIA_KEY dans .env).")
+        raise InferenceError("Clé Homn refusée par le serveur (vérifiez HOMN_KEY dans .env).")
     if response.status_code != 200:
         try:
             detail = response.json()["error"]["message"]

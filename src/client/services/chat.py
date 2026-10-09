@@ -2,10 +2,10 @@ import asyncio
 from typing import List, Dict
 from src.client.services.database import save_exchange, get_chat_history, get_attachments
 from src.client.services.file import FileService
-from src.client.services.maia import chat_completion, InferenceError
+from src.client.services.homn import chat_completion, InferenceError
 from src.schemas import ComputeResponse
 
-BASE_SYSTEM_PROMPT = "Tu es Maia, un assistant développeur personnel et local."
+BASE_SYSTEM_PROMPT = "Tu es Homn, un assistant développeur personnel et local."
 MAX_TREE_LINES = 200
 
 

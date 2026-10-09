@@ -18,7 +18,7 @@ if __name__ == "__main__":
     elif mode == "client":
         import uvicorn
         from src.client.web import app
-        print(f"Interface MAIA sur http://127.0.0.1:{CLIENT_PORT}")
+        print(f"Interface Homn Systems sur http://127.0.0.1:{CLIENT_PORT}")
         uvicorn.run(app, host="127.0.0.1", port=CLIENT_PORT)
 
     else:

@@ -5,7 +5,7 @@ from dotenv import load_dotenv
 load_dotenv()
 
 # Clé partagée entre le serveur et ses clients.
-MAIA_KEY: str = os.getenv("MAIA_KEY", "")
+HOMN_KEY: str = os.getenv("HOMN_KEY", "")
 
 # ─── Serveur d'inférence (machine GPU) ──────────────────────────────────────
 SERVER_NAME: str = os.getenv("SERVER_NAME", "unknown-node")
@@ -28,5 +28,5 @@ CLIENT_PORT: int = int(os.getenv("CLIENT_PORT", "8090"))
 
 # Workspace de l'agent, sur le poste du client.
 WORKSPACE_DIR: Path = Path(
-    os.getenv("WORKSPACE_DIR", str(Path.home() / "Documents" / "maia"))
+    os.getenv("WORKSPACE_DIR", str(Path.home() / "Documents" / "homn"))
 ).expanduser()

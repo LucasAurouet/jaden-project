@@ -4,4 +4,4 @@ router = APIRouter(tags=["Système"])
 
 @router.get("/health")
 async def health():
-    return {"status": "ok", "service": "maia-backend"}
+    return {"status": "ok", "service": "homn-backend"}

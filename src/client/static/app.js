@@ -34,7 +34,7 @@ document.addEventListener('DOMContentLoaded', () => {
     userInput.focus();
 });
 
-// Un <form> gère nativement la touche Entrée et le bouton "submit".
+
 promptForm.addEventListener("submit", (e) => {
     e.preventDefault();
     sendMessage();
@@ -67,7 +67,7 @@ function tickClock() {
     document.getElementById("clock").textContent = timestamp();
 }
 
-// Les couleurs viennent des variables CSS : une seule source de vérité.
+
 const cssVar = (name) => getComputedStyle(document.documentElement).getPropertyValue(name).trim();
 
 
@@ -193,7 +193,7 @@ async function sendMessage() {
 }
 
 
-const SENDER_LABEL = { user: "OPÉRATEUR", assistant: "MAIA", error: "SYSTÈME // ERREUR" };
+const SENDER_LABEL = { user: "OPÉRATEUR", assistant: "HOMN", error: "SYSTÈME // ERREUR" };
 
 function createMessage(sender) {
     document.getElementById("boot")?.remove();
@@ -223,8 +223,6 @@ function appendMessage(text, sender) {
     const { msg, body } = createMessage(sender);
 
     if (sender === "assistant") {
-        // La sortie du LLM n'est pas fiable (elle peut reprendre du contenu
-        // injecté via un fichier) : on nettoie le HTML avant de l'insérer.
         body.innerHTML = DOMPurify.sanitize(marked.parse(text));
         body.querySelectorAll('pre code').forEach(el => hljs.highlightElement(el));
     } else {
@@ -266,7 +264,6 @@ function initCharts() {
                 plugins: { legend: { display: false }, tooltip: { enabled: false } },
                 scales: {
                     x: { display: false },
-                    // max fixe pour les %, échelle automatique pour les tokens/s
                     y: { display: false, min: 0, max, suggestedMax: max ?? 40 }
                 },
                 elements: {
