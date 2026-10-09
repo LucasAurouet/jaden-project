@@ -26,9 +26,17 @@ async def stop_client():
         await _client.aclose()
 
 
-async def chat_completion(messages: List[Dict[str, str]]) -> str:
+async def chat_completion(
+    messages: List[Dict[str, Any]],
+    tools: List[Dict[str, Any]] | None = None,
+) -> Dict[str, Any]:
+    """Renvoie le message assistant complet (content et éventuels tool_calls)."""
+    payload: Dict[str, Any] = {"messages": messages}
+    if tools:
+        payload["tools"] = tools
+
     try:
-        response = await _client.post("/v1/chat/completions", json={"messages": messages})
+        response = await _client.post("/v1/chat/completions", json=payload)
     except httpx.ConnectError as e:
         raise InferenceError(f"Serveur d'inférence injoignable ({SERVER_URL}).") from e
     except httpx.TimeoutException as e:
@@ -44,7 +52,7 @@ async def chat_completion(messages: List[Dict[str, str]]) -> str:
         raise InferenceError(f"Erreur HTTP {response.status_code} : {detail}")
 
     try:
-        return response.json()["choices"][0]["message"]["content"]
+        return response.json()["choices"][0]["message"]
     except (ValueError, KeyError, IndexError) as e:
         raise InferenceError("La réponse du serveur n'est pas au format attendu.") from e
 
