@@ -38,20 +38,6 @@ def init_db():
             )
         """)
 
-        # Fichiers téléversés : stockés à part, puis injectés dans le prompt
-        # système au moment de l'appel (et non au milieu de l'historique).
-        conn.execute("""
-            CREATE TABLE IF NOT EXISTS attachments (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                session_id TEXT,
-                filename TEXT NOT NULL,
-                content TEXT NOT NULL,
-                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                UNIQUE (session_id, filename),
-                FOREIGN KEY (session_id) REFERENCES sessions(id) ON DELETE CASCADE
-            )
-        """)
-
 
 def save_exchange(session_id: str, prompt: str, answer: str):
     """Enregistre un tour complet (question + réponse) dans une seule transaction."""
@@ -73,21 +59,3 @@ def get_chat_history(session_id: str) -> List[Dict[str, str]]:
         ).fetchall()
         return [{"role": row["role"], "content": row["content"]} for row in rows]
 
-
-def save_attachment(session_id: str, filename: str, content: str):
-    """Enregistre (ou remplace) un fichier attaché à une session."""
-    with _connect() as conn:
-        conn.execute("INSERT OR IGNORE INTO sessions (id) VALUES (?)", (session_id,))
-        conn.execute(
-            "INSERT OR REPLACE INTO attachments (session_id, filename, content) VALUES (?, ?, ?)",
-            (session_id, filename, content),
-        )
-
-
-def get_attachments(session_id: str) -> List[Dict[str, str]]:
-    with _connect() as conn:
-        rows = conn.execute(
-            "SELECT filename, content FROM attachments WHERE session_id = ? ORDER BY id ASC",
-            (session_id,)
-        ).fetchall()
-        return [{"filename": row["filename"], "content": row["content"]} for row in rows]

@@ -19,3 +19,6 @@ venv/
 # Misc
 .assets/
 assets/
+
+# Fichiers envoyés depuis l'interface (workspace = racine du projet)
+uploads/

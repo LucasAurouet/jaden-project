@@ -78,11 +78,10 @@ async function uploadFile(file) {
         statusLabel.dataset.state = state;
         statusLabel.textContent = text;
     };
-    setStatus("busy", "▸ Injection en cours…");
+    setStatus("busy", "▸ Envoi en cours…");
 
     const formData = new FormData();
     formData.append("file", file);
-    formData.append("session_id", SESSION_ID);
 
     try {
         const response = await fetch(UPLOAD_URL, {
@@ -93,7 +92,8 @@ async function uploadFile(file) {
         const result = await response.json();
 
         if (response.ok) {
-            setStatus("ok", `✔ ${result.filename} injecté dans le contexte`);
+            setStatus("ok", `✔ Ajouté au workspace : ${result.path}`);
+            await fetchWorkspaceFiles();
         } else {
             setStatus("error", `✖ ${result.detail || 'Impossible de charger'}`);
         }
@@ -107,15 +107,19 @@ async function uploadFile(file) {
 async function fetchWorkspaceFiles() {
     try {
         const response = await fetch(WORKSPACE_URL);
+        const data = await response.json().catch(() => null);
 
-        if (!response.ok) throw new Error(`Erreur HTTP: ${response.status}`);
+        if (!response.ok) throw new Error(data?.detail || `Erreur HTTP: ${response.status}`);
 
-        const files = await response.json();
-        renderWorkspaceFiles(files);
+        renderWorkspaceFiles(data);
 
     } catch (error) {
         console.error("Impossible de récupérer la liste des fichiers du workspace :", error);
-        fileListContainer.innerHTML = `<li class="workspace-error">✖ Workspace inaccessible</li>`;
+        const li = document.createElement("li");
+        li.className = "workspace-error";
+        li.textContent = `✖ ${error.message}`;
+        li.title = error.message;
+        fileListContainer.replaceChildren(li);
     }
 }
 

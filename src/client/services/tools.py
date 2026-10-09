@@ -1,97 +1,37 @@
-import os
-import re
 import json
 import asyncio
-from pathlib import Path
 from typing import Any, Callable, Dict, List
-from src.client.services.file import WORKSPACE_DIR, IGNORE_DIRS, IGNORE_FILES, IGNORE_EXTENSIONS
+from src.client.services import workspace
+from src.client.services.workspace import WorkspaceError
 
-WORKSPACE_ROOT = Path(WORKSPACE_DIR).resolve()
+# Limites propres au contexte du modèle (le service, lui, renvoie tout).
 MAX_READ_CHARS = 20_000
 MAX_SEARCH_RESULTS = 50
 
 
-class ToolError(Exception):
-    """Erreur renvoyée au modèle sous forme de résultat de tool."""
-
-
-def _resolve(path: str) -> Path:
-    """Résout un chemin relatif au workspace et refuse toute sortie de celui-ci."""
-    target = (WORKSPACE_ROOT / path.lstrip("/")).resolve()
-    if not target.is_relative_to(WORKSPACE_ROOT):
-        raise ToolError(f"Accès refusé : '{path}' est en dehors du workspace.")
-    return target
-
-
-def _is_visible(entry: Path) -> bool:
-    if entry.name.startswith("."):
-        return False
-    if entry.is_dir():
-        return entry.name not in IGNORE_DIRS
-    return entry.name not in IGNORE_FILES and entry.suffix.lower() not in IGNORE_EXTENSIONS
-
-
-def _relative(path: Path) -> str:
-    return path.relative_to(WORKSPACE_ROOT).as_posix() or "."
-
-
-# ─── Implémentations ────────────────────────────────────────────────────────
+# ─── Adaptateurs workspace ──────────────────────────────────────────────────
 
 def list_dir(path: str = ".") -> str:
-    target = _resolve(path)
-    if not target.is_dir():
-        raise ToolError(f"'{path}' n'est pas un dossier.")
-
-    entries = sorted(
-        (e for e in target.iterdir() if _is_visible(e)),
-        key=lambda e: (not e.is_dir(), e.name),
-    )
+    entries = workspace.list_dir(path)
     if not entries:
         return "(dossier vide)"
     return "\n".join(f"{e.name}/" if e.is_dir() else e.name for e in entries)
 
 
 def read_file(path: str) -> str:
-    target = _resolve(path)
-    if not target.is_file():
-        raise ToolError(f"'{path}' n'existe pas ou n'est pas un fichier.")
-
-    try:
-        content = target.read_text(encoding="utf-8")
-    except UnicodeDecodeError:
-        raise ToolError(f"'{path}' n'est pas un fichier texte UTF-8.")
-
+    content = workspace.read_text(path)
     if len(content) > MAX_READ_CHARS:
         content = content[:MAX_READ_CHARS] + f"\n... (fichier tronqué à {MAX_READ_CHARS} caractères)"
     return content
 
 
 def search(pattern: str, path: str = ".") -> str:
-    try:
-        regex = re.compile(pattern)
-    except re.error as e:
-        raise ToolError(f"Expression régulière invalide : {e}")
-
-    root = _resolve(path)
     results = []
-
-    for current, dirs, files in os.walk(root):
-        dirs[:] = sorted(d for d in dirs if _is_visible(Path(current) / d))
-        for name in sorted(files):
-            file_path = Path(current) / name
-            if not _is_visible(file_path):
-                continue
-            try:
-                lines = file_path.read_text(encoding="utf-8").splitlines()
-            except (UnicodeDecodeError, OSError):
-                continue
-            for lineno, line in enumerate(lines, 1):
-                if regex.search(line):
-                    results.append(f"{_relative(file_path)}:{lineno}: {line.strip()}")
-                    if len(results) >= MAX_SEARCH_RESULTS:
-                        results.append(f"... (limité à {MAX_SEARCH_RESULTS} résultats)")
-                        return "\n".join(results)
-
+    for file_path, lineno, line in workspace.search(pattern, path):
+        if len(results) >= MAX_SEARCH_RESULTS:
+            results.append(f"... (limité à {MAX_SEARCH_RESULTS} résultats)")
+            break
+        results.append(f"{file_path}:{lineno}: {line.strip()}")
     return "\n".join(results) if results else "Aucun résultat."
 
 
@@ -158,7 +98,7 @@ async def execute_tool(name: str, raw_arguments: str) -> str:
     func: Callable[..., str] = tool["function"]
     try:
         return await asyncio.to_thread(func, **arguments)
-    except ToolError as e:
+    except WorkspaceError as e:
         return f"Erreur : {e}"
     except TypeError as e:
         return f"Erreur : arguments incorrects pour '{name}' ({e})."
