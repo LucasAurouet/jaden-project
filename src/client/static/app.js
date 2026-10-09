@@ -277,7 +277,7 @@ function initCharts() {
         });
     };
 
-    make('chart-cpu',    history.cpu,    cssVar('--amber'), 100);
+    make('chart-cpu',    history.cpu,    cssVar('--accent'), 100);
     make('chart-ram',    history.ram,    cssVar('--cyan'),  100);
     make('chart-gpu',    history.gpu,    cssVar('--red'),   100);
     make('chart-tokens', history.tokens, cssVar('--green'));
