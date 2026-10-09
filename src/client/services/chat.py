@@ -12,7 +12,7 @@ BASE_SYSTEM_PROMPT = (
     "utilise-les plutôt que de deviner le contenu d'un fichier."
 )
 MAX_TREE_LINES = 200
-MAX_TOOL_ITERATIONS = 8
+MAX_TOOL_ITERATIONS = 3
 
 
 def build_system_prompt(attachments: List[Dict[str, str]], tree: str) -> str:
