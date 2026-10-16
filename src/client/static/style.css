@@ -94,7 +94,7 @@ body {
     flex: 1;
     min-height: 0;
     display: grid;
-    grid-template-columns: 270px minmax(0, 1fr);
+    grid-template-columns: 270px minmax(0, 1fr) 250px;
     gap: 12px;
 }
 
@@ -557,6 +557,114 @@ body {
 .btn--primary:active   { transform: translateY(1px); }
 .btn--primary:disabled { background: var(--line-strong); border-color: var(--line-strong); color: var(--text-dim); cursor: wait; }
 
+.btn--ghost {
+    width: 100%;
+    padding: 11px 10px;
+    letter-spacing: 0.14em;
+    background: transparent;
+    color: var(--accent);
+    border-color: rgba(230, 99, 24, 0.5);
+}
+.btn--ghost:hover { background: rgba(230, 99, 24, 0.08); border-color: var(--accent); }
+
+.icon-btn {
+    margin-left: auto;
+    display: flex;
+    background: none;
+    border: 1px solid transparent;
+    color: var(--text-dim);
+    padding: 4px;
+    cursor: pointer;
+}
+.icon-btn:hover { color: var(--accent); border-color: rgba(230, 99, 24, 0.4); }
+.icon-btn:disabled svg { animation: spin 0.8s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* ─── 03 · DOCUMENTS ────────────────────────────────────────────────────── */
+.upload {
+    padding: 12px;
+    border-bottom: 1px solid var(--line);
+    display: grid;
+    gap: 8px;
+}
+
+.upload__status { font-size: 0.78rem; min-height: 1.2em; color: var(--text-dim); }
+.upload__status[data-state="busy"] { color: var(--accent); }
+.upload__status[data-state="ok"]   { color: var(--green); }
+.upload__status[data-state="error"]{ color: var(--red); }
+
+.files {
+    flex: 1;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+    padding: 12px;
+}
+
+.files__label {
+    font-family: var(--f-label);
+    font-size: 0.5rem;
+    letter-spacing: 0.24em;
+    color: var(--text-dim);
+    margin-bottom: 6px;
+}
+
+.file-list { list-style: none; overflow-y: auto; flex: 1; min-height: 0; }
+
+.document-item {
+    display: flex;
+    align-items: baseline;
+    gap: 8px;
+    padding: 5px 2px;
+    border-bottom: 1px solid var(--line);
+    font-size: 0.8rem;
+}
+.document-item::before { content: '▸'; color: var(--accent); font-size: 0.7em; }
+.document-item:hover { background: var(--panel-2); }
+.document-item:hover .document-name { color: #ffffff; }
+
+.document-name {
+    flex: 1;
+    min-width: 0;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    color: var(--text);
+}
+
+.document-chunks {
+    flex-shrink: 0;
+    font-size: 0.7rem;
+    color: var(--text-dim);
+    font-variant-numeric: tabular-nums;
+}
+
+.document-delete {
+    flex-shrink: 0;
+    align-self: center;
+    background: none;
+    border: none;
+    color: var(--text-dim);
+    font: inherit;
+    line-height: 1;
+    padding: 0 2px;
+    cursor: pointer;
+    opacity: 0;
+}
+.document-item:hover .document-delete,
+.document-delete:focus-visible { opacity: 1; }
+.document-delete:hover { color: var(--red); }
+.document-delete:disabled { cursor: wait; }
+/* Pas de survol sur écran tactile : bouton toujours visible. */
+@media (hover: none) { .document-delete { opacity: 1; } }
+
+.documents-empty, .documents-error {
+    padding: 14px 0;
+    font-size: 0.8rem;
+    color: var(--text-dim);
+}
+.documents-error { color: var(--red); }
+
 /* ─── SPÉCIFICATIONS ────────────────────────────────────────────────────── */
 .specs {
     border-top: 1px solid var(--line);
@@ -577,7 +685,7 @@ body {
 
 /* ─── ÉCRANS ÉTROITS ────────────────────────────────────────────────────── */
 @media (max-width: 1180px) {
-    .layout { grid-template-columns: minmax(0, 1fr); }
+    .layout { grid-template-columns: minmax(0, 1fr) 240px; }
     .panel--monitor { display: none; }
 }
 
@@ -586,6 +694,7 @@ body {
     .app { height: auto; min-height: 100vh; padding: 12px 16px 16px; }
     .layout { grid-template-columns: minmax(0, 1fr); }
     .panel--terminal { height: 78vh; }
+    .panel--documents { max-height: 60vh; }
     .hazard, .brand__tag { display: none; }
     .topbar { justify-content: space-between; gap: 12px; }
     .prompt .btn--primary { padding: 11px 12px; letter-spacing: 0.14em; }

@@ -1,11 +1,15 @@
 const SESSION_ID = 'session-' + Date.now() + '-' + Math.random().toString(36).substring(2, 11);
 const API_URL = "/api/compute";
 const METRICS_URL = "/api/metrics";
+const DOCUMENTS_URL = "/api/documents";
 
 const chatBox = document.getElementById("chat-box");
 const userInput = document.getElementById("user-input");
 const promptForm = document.getElementById("prompt-form");
 const sendBtn = document.getElementById("send-btn");
+const documentList = document.getElementById("document-list");
+const fileInput = document.getElementById("file-input");
+const refreshDocumentsBtn = document.getElementById("refresh-documents-btn");
 
 const HISTORY_SIZE = 40;
 const history = {
@@ -25,6 +29,7 @@ document.addEventListener('DOMContentLoaded', () => {
     setInterval(updateMetrics, 2000);
     tickClock();
     setInterval(tickClock, 1000);
+    fetchDocuments();
     userInput.focus();
 });
 
@@ -32,6 +37,21 @@ document.addEventListener('DOMContentLoaded', () => {
 promptForm.addEventListener("submit", (e) => {
     e.preventDefault();
     sendMessage();
+});
+
+fileInput.addEventListener("change", async (event) => {
+    const file = event.target.files[0];
+    if (!file) return;
+
+    await uploadDocument(file);
+
+    event.target.value = '';
+});
+
+refreshDocumentsBtn.addEventListener("click", async () => {
+    refreshDocumentsBtn.disabled = true;
+    await fetchDocuments();
+    refreshDocumentsBtn.disabled = false;
 });
 
 // ─── UTILITAIRES ────────────────────────────────────────────────────────────
@@ -47,6 +67,110 @@ function tickClock() {
 
 
 const cssVar = (name) => getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+
+
+// ─── DOCUMENTS ──────────────────────────────────────────────────────────────
+// Les erreurs FastAPI arrivent sous la forme {"detail": "..."}.
+async function errorMessage(response) {
+    const data = await response.json().catch(() => null);
+    return data?.detail || `Erreur HTTP ${response.status}`;
+}
+
+async function uploadDocument(file) {
+    const statusLabel = document.getElementById('upload-status');
+    const setStatus = (state, text) => {
+        statusLabel.dataset.state = state;
+        statusLabel.textContent = text;
+    };
+    setStatus("busy", "▸ Indexation en cours…");
+    fileInput.disabled = true;
+
+    const formData = new FormData();
+    formData.append("file", file);
+
+    try {
+        const response = await fetch(DOCUMENTS_URL, { method: "POST", body: formData });
+
+        if (response.ok) {
+            const result = await response.json();
+            setStatus("ok", `✔ ${result.source} indexé (${result.chunks} passage${result.chunks > 1 ? 's' : ''})`);
+            await fetchDocuments();
+        } else {
+            setStatus("error", `✖ ${await errorMessage(response)}`);
+        }
+    } catch (error) {
+        setStatus("error", "✖ Client local hors ligne");
+        console.error("Erreur d'upload :", error);
+    } finally {
+        fileInput.disabled = false;
+    }
+}
+
+
+async function fetchDocuments() {
+    try {
+        const response = await fetch(DOCUMENTS_URL);
+        if (!response.ok) throw new Error(await errorMessage(response));
+        renderDocuments(await response.json());
+    } catch (error) {
+        console.error("Impossible de récupérer la liste des documents :", error);
+        const li = document.createElement("li");
+        li.className = "documents-error";
+        li.textContent = `✖ ${error.message}`;
+        li.title = error.message;
+        documentList.replaceChildren(li);
+    }
+}
+
+
+async function deleteDocument(doc, button) {
+    if (!confirm(`Retirer « ${doc.source} » de la base de connaissances ?`)) return;
+
+    button.disabled = true;
+    try {
+        const response = await fetch(`${DOCUMENTS_URL}/${doc.id}`, { method: "DELETE" });
+        if (!response.ok && response.status !== 404) throw new Error(await errorMessage(response));
+    } catch (error) {
+        alert(`Suppression impossible : ${error.message}`);
+    }
+    await fetchDocuments();
+}
+
+
+function renderDocuments(documents) {
+    if (!documents || documents.length === 0) {
+        const li = document.createElement("li");
+        li.className = "documents-empty";
+        li.textContent = "Aucun document indexé";
+        documentList.replaceChildren(li);
+        return;
+    }
+
+    documentList.replaceChildren(...documents.map(doc => {
+        const li = document.createElement("li");
+        li.className = "document-item";
+
+        const name = document.createElement("span");
+        name.className = "document-name";
+        name.title = doc.source;
+        name.textContent = doc.source;
+
+        const chunks = document.createElement("span");
+        chunks.className = "document-chunks";
+        chunks.textContent = `${doc.chunks} pass.`;
+        chunks.title = `${doc.chunks} passage${doc.chunks > 1 ? 's' : ''} indexé${doc.chunks > 1 ? 's' : ''}`;
+
+        const remove = document.createElement("button");
+        remove.className = "document-delete";
+        remove.textContent = "✕";
+        remove.title = "Retirer ce document";
+        remove.setAttribute("aria-label", `Retirer ${doc.source}`);
+        remove.addEventListener("click", () => deleteDocument(doc, remove));
+
+        li.append(name, chunks, remove);
+        return li;
+    }));
+}
 
 
 // ─── DIALOGUE ───────────────────────────────────────────────────────────────
