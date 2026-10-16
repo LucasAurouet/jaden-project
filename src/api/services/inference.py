@@ -49,6 +49,7 @@ class InferenceError(Exception):
 async def stream_chat_completion(
     messages: List[Dict[str, Any]],
     tools: List[Dict[str, Any]] | None = None,
+    max_tokens: int | None = None,
 ) -> AsyncIterator[Dict[str, Any]]:
     """
     Appelle le modèle en streaming et renvoie au fil de l'eau le champ
@@ -59,6 +60,8 @@ async def stream_chat_completion(
         payload["model"] = LLM_MODEL
     if tools:
         payload["tools"] = tools
+    if max_tokens:
+        payload["max_tokens"] = max_tokens
 
     try:
         async with _client.stream("POST", "/v1/chat/completions", json=payload) as response:
@@ -89,6 +92,14 @@ async def stream_chat_completion(
         raise InferenceError("Le moteur d'inférence n'a pas répondu à temps.") from e
     except httpx.HTTPError as e:
         raise InferenceError("La connexion au moteur d'inférence a été interrompue.") from e
+
+
+async def complete_chat(messages: List[Dict[str, Any]], max_tokens: int | None = None) -> str:
+    """Réponse complète du modèle, sans tools (tâches internes comme le résumé)."""
+    content = ""
+    async for delta in stream_chat_completion(messages, max_tokens=max_tokens):
+        content += delta.get("content") or ""
+    return content
 
 
 async def get_llama_metrics_from_api() -> LlamaMetrics:

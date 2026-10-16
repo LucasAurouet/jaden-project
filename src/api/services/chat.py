@@ -1,7 +1,8 @@
 import json
-from typing import Any, AsyncIterator, List, Dict
-from src.api.services.database import save_exchange, get_chat_history
-from src.api.services.inference import stream_chat_completion, InferenceError
+from typing import Any, AsyncIterator, Iterator, List, Dict
+from config import CONTEXT_TOKEN_BUDGET
+from src.api.services.database import save_exchange, get_chat_context, save_summary
+from src.api.services.inference import stream_chat_completion, complete_chat, InferenceError
 from src.api.services.tools import TOOL_SCHEMAS, execute_tool
 
 SYSTEM_PROMPT = (
@@ -10,6 +11,26 @@ SYSTEM_PROMPT = (
     "dès que la question peut s'y rapporter, et cite la source des passages utilisés."
 )
 MAX_TOOL_ITERATIONS = 3
+
+# Part du budget gardée en messages bruts lors d'un résumé : le reste est résumé,
+# ce qui laisse de la marge avant le prochain.
+CONTEXT_KEEP_RATIO = 0.4
+SUMMARY_MAX_TOKENS = 1024
+SUMMARY_PROMPT = """Résume la conversation ci-dessous : ce résumé remplacera ces échanges dans la mémoire de l'assistant.
+
+Consignes :
+- Conserve les faits donnés par l'utilisateur, ses préférences, ses contraintes et les décisions prises.
+- Conserve les informations importantes des réponses, avec les sources de documents citées.
+- Conserve les questions en suspens et la tâche en cours.
+- Sois factuel et précis, n'invente rien.
+- Reste concis, mais assez complet pour poursuivre la conversation sans les échanges d'origine.
+- Réponds uniquement par le résumé, en français.
+
+### Résumé précédent :
+{previous}
+
+### Échanges à résumer :
+{exchanges}"""
 
 
 def _sse(event: Dict[str, Any]) -> str:
@@ -39,6 +60,55 @@ def _merge_tool_call_deltas(calls: Dict[int, Dict[str, Any]], deltas: List[Dict[
             call["function"]["arguments"] = json.dumps(arguments)
 
 
+def _estimate_tokens(text: str | None) -> int:
+    """Estimation grossière : environ 4 caractères par token."""
+    return len(text or "") // 4
+
+
+def _estimate_messages(messages: List[Dict[str, Any]]) -> int:
+    return sum(4 + _estimate_tokens(message["content"]) for message in messages)
+
+
+def _group_exchanges(messages: List[Dict[str, Any]]) -> List[List[Dict[str, Any]]]:
+    """Découpe l'historique en échanges, chacun commençant par un message user."""
+    exchanges: List[List[Dict[str, Any]]] = []
+    for message in messages:
+        if message["role"] == "user" or not exchanges:
+            exchanges.append([])
+        exchanges[-1].append(message)
+    return exchanges
+
+
+def _batches(exchanges: List[List[Dict[str, Any]]], limit: int) -> Iterator[List[Dict[str, Any]]]:
+    """Regroupe des échanges consécutifs en lots d'environ limit tokens au plus."""
+    batch: List[Dict[str, Any]] = []
+    size = 0
+    for exchange in exchanges:
+        cost = _estimate_messages(exchange)
+        if batch and size + cost > limit:
+            yield batch
+            batch, size = [], 0
+        batch.extend(exchange)
+        size += cost
+    if batch:
+        yield batch
+
+
+async def _summarize(previous: str | None, messages: List[Dict[str, Any]]) -> str:
+    # Un message géant est tronqué pour que l'appel de résumé tienne dans le contexte.
+    max_chars = CONTEXT_TOKEN_BUDGET
+    labels = {"user": "Utilisateur", "assistant": "Assistant"}
+    exchanges = "\n\n".join(
+        f"{labels.get(message['role'], message['role'])} : {message['content'][:max_chars]}"
+        for message in messages
+    )
+    prompt = SUMMARY_PROMPT.format(previous=previous or "(aucun)", exchanges=exchanges)
+    summary = (await complete_chat([{"role": "user", "content": prompt}], max_tokens=SUMMARY_MAX_TOKENS)).strip()
+    if not summary:
+        raise InferenceError("Le modèle a renvoyé un résumé vide.")
+    return summary
+
+
 class ChatService:
 
     @staticmethod
@@ -48,13 +118,22 @@ class ChatService:
         delta (morceau de réponse), tool (appel d'un tool), done ou error.
         L'échange n'est enregistré qu'une fois la réponse complète.
         """
-        history = await get_chat_history(session_id)
+        summary, history = None, []
+        async for event in ChatService._build_context(session_id):
+            if event["type"] == "context":
+                summary, history = event["summary"], event["history"]
+            else:
+                yield _sse(event)
 
         # L'historique en base ne contient que des tours user/assistant :
-        # le message système est ajouté à chaque appel.
+        # le message système est ajouté à chaque appel. Le résumé y est fusionné,
+        # car certains templates refusent un second message système.
+        system = SYSTEM_PROMPT
+        if summary:
+            system += f"\n\nRésumé des échanges précédents :\n{summary}"
         messages = (
-            [{"role": "system", "content": SYSTEM_PROMPT}]
-            + history
+            [{"role": "system", "content": system}]
+            + [{"role": message["role"], "content": message["content"]} for message in history]
             + [{"role": "user", "content": prompt}]
         )
 
@@ -70,6 +149,39 @@ class ChatService:
 
         await save_exchange(session_id, prompt, answer)
         yield _sse({"type": "done"})
+
+    @staticmethod
+    async def _build_context(session_id: str) -> AsyncIterator[Dict[str, Any]]:
+        """
+        Charge le résumé et l'historique de la session. Si l'ensemble dépasse
+        CONTEXT_TOKEN_BUDGET, les anciens échanges sont résumés et le résumé
+        enregistré en base. Termine par un événement interne "context".
+        """
+        summary, history = await get_chat_context(session_id)
+
+        if _estimate_tokens(summary) + _estimate_messages(history) > CONTEXT_TOKEN_BUDGET:
+            exchanges = _group_exchanges(history)
+            # On garde au moins le dernier échange, puis les précédents tant qu'ils tiennent.
+            keep = len(exchanges) - 1
+            size = _estimate_messages(exchanges[-1])
+            while keep > 0 and size + _estimate_messages(exchanges[keep - 1]) <= CONTEXT_KEEP_RATIO * CONTEXT_TOKEN_BUDGET:
+                keep -= 1
+                size += _estimate_messages(exchanges[keep])
+
+            if keep > 0:
+                yield {"type": "status", "message": "Résumé de l'historique…"}
+                history = [message for exchange in exchanges[keep:] for message in exchange]
+                try:
+                    # Par lots bornés : une session très longue se résorbe en plusieurs passes.
+                    for batch in _batches(exchanges[:keep], CONTEXT_TOKEN_BUDGET // 2):
+                        summary = await _summarize(summary, batch)
+                        await save_summary(session_id, summary, batch[-1]["id"])
+                except InferenceError:
+                    # Repli : les échanges non résumés sont simplement omis pour ce tour,
+                    # le résumé reprendra au prochain.
+                    pass
+
+        yield {"type": "context", "summary": summary, "history": history}
 
     @staticmethod
     async def _run_agent_loop(messages: List[Dict[str, Any]]) -> AsyncIterator[Dict[str, Any]]:

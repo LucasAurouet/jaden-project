@@ -19,6 +19,10 @@ LLM_API_KEY: str = os.getenv("LLM_API_KEY", "")
 # Requis par les API hébergées, ignoré par llama-server.
 LLM_MODEL: str = os.getenv("LLM_MODEL", "")
 LLM_TIMEOUT: float = float(os.getenv("LLM_TIMEOUT", "120"))
+# Taille max (estimée) de l'historique envoyé au LLM ; au-delà, les anciens
+# tours sont résumés. Environ la moitié du n_ctx : le reste sert au prompt
+# système, aux résultats des tools et à la réponse.
+CONTEXT_TOKEN_BUDGET: int = int(os.getenv("CONTEXT_TOKEN_BUDGET", "8000"))
 
 # Fournisseur des embeddings (RAG), compatible OpenAI (/v1/embeddings) :
 # llama-server lancé avec --embedding, mistral-embed...

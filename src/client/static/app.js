@@ -204,6 +204,8 @@ async function sendMessage() {
                 reply.append(event.content);
             } else if (event.type === "tool") {
                 reply.setStatus(`OUTIL // ${event.name}`);
+            } else if (event.type === "status") {
+                reply.setStatus(event.message);
             } else if (event.type === "error") {
                 reply.fail(event.message);
                 return;

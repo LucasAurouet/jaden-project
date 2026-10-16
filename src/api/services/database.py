@@ -1,6 +1,6 @@
 import asyncpg
 from pgvector.asyncpg import register_vector
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Tuple
 from config import DATABASE_URL, EMBEDDING_DIM
 
 _pool: asyncpg.Pool | None = None
@@ -32,6 +32,9 @@ async def init_db():
                 created_at TIMESTAMPTZ DEFAULT now()
             )
         """)
+        # Résumé glissant : remplace les messages d'id <= summary_upto dans le contexte du LLM.
+        await conn.execute("ALTER TABLE sessions ADD COLUMN IF NOT EXISTS summary TEXT")
+        await conn.execute("ALTER TABLE sessions ADD COLUMN IF NOT EXISTS summary_upto BIGINT NOT NULL DEFAULT 0")
 
         # Uniquement les tours de conversation (user / assistant).
         await conn.execute("""
@@ -94,13 +97,30 @@ async def save_exchange(session_id: str, prompt: str, answer: str):
         )
 
 
-async def get_chat_history(session_id: str) -> List[Dict[str, str]]:
-    """Récupère l'historique complet d'une session sous forme utilisable par le LLM."""
-    rows = await _pool.fetch(
-        "SELECT role, content FROM messages WHERE session_id = $1 ORDER BY id ASC",
-        session_id,
+async def get_chat_context(session_id: str) -> Tuple[str | None, List[Dict[str, Any]]]:
+    """
+    Résumé de la session et messages qu'il ne couvre pas encore (avec leur id),
+    du plus ancien au plus récent.
+    """
+    async with _pool.acquire() as conn, conn.transaction(isolation="repeatable_read", readonly=True):
+        session = await conn.fetchrow(
+            "SELECT summary, summary_upto FROM sessions WHERE id = $1", session_id
+        )
+        if session is None:
+            return None, []
+        rows = await conn.fetch(
+            "SELECT id, role, content FROM messages WHERE session_id = $1 AND id > $2 ORDER BY id ASC",
+            session_id, session["summary_upto"],
+        )
+    return session["summary"], [dict(row) for row in rows]
+
+
+async def save_summary(session_id: str, summary: str, upto: int):
+    """Avance le point de contrôle du résumé, sans jamais le faire reculer."""
+    await _pool.execute(
+        "UPDATE sessions SET summary = $2, summary_upto = $3 WHERE id = $1 AND summary_upto < $3",
+        session_id, summary, upto,
     )
-    return [{"role": row["role"], "content": row["content"]} for row in rows]
 
 
 # ─── Documents (RAG) ────────────────────────────────────────────────────────
