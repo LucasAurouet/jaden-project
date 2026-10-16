@@ -12,9 +12,24 @@ SERVER_NAME: str = os.getenv("SERVER_NAME", "unknown-node")
 # Interface sur laquelle écouter. 0.0.0.0 = toutes (réseau local + localhost).
 BIND_HOST: str = os.getenv("BIND_HOST", "0.0.0.0")
 
-# llama-server, joignable uniquement depuis la machine GPU.
+# Fournisseur du LLM : toute API compatible OpenAI (llama-server local,
+# https://api.mistral.ai...). Le chemin /v1/... est ajouté par le serveur.
 LLM_BASE_URL: str = os.getenv("LLM_BASE_URL", "http://127.0.0.1:8080")
+LLM_API_KEY: str = os.getenv("LLM_API_KEY", "")
+# Requis par les API hébergées, ignoré par llama-server.
+LLM_MODEL: str = os.getenv("LLM_MODEL", "")
 LLM_TIMEOUT: float = float(os.getenv("LLM_TIMEOUT", "120"))
+
+# Fournisseur des embeddings (RAG), compatible OpenAI (/v1/embeddings) :
+# llama-server lancé avec --embedding, mistral-embed...
+EMBEDDING_BASE_URL: str = os.getenv("EMBEDDING_BASE_URL", "http://127.0.0.1:8082")
+EMBEDDING_API_KEY: str = os.getenv("EMBEDDING_API_KEY", "")
+EMBEDDING_MODEL: str = os.getenv("EMBEDDING_MODEL", "")
+# Fixée à la création de la table : changer de modèle impose de réindexer.
+EMBEDDING_DIM: int = int(os.getenv("EMBEDDING_DIM", "1024"))
+
+# Postgres avec l'extension pgvector : historique et documents.
+DATABASE_URL: str = os.getenv("DATABASE_URL", "postgresql://homn:homn@127.0.0.1:5432/homn")
 
 # ─── Client (poste de travail) ──────────────────────────────────────────────
 # Adresse du serveur d'inférence à contacter (SERVER_PORT sert aussi

@@ -5,3 +5,5 @@ python-dotenv==1.2.2
 python-multipart==0.0.32
 psutil==7.2.2
 nvidia-ml-py==13.610.43
+asyncpg==0.30.0
+pgvector==0.4.1

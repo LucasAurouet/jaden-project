@@ -1,11 +1,14 @@
-import asyncio
 from typing import Any, List, Dict
 from src.api.services.database import save_exchange, get_chat_history
 from src.api.services.inference import chat_completion, InferenceError
 from src.api.services.tools import TOOL_SCHEMAS, execute_tool
 from src.schemas import ComputeResponse
 
-SYSTEM_PROMPT = "Tu es Homn, un assistant développeur personnel et local."
+SYSTEM_PROMPT = (
+    "Tu es Homn, un assistant personnel. "
+    "L'utilisateur peut t'avoir fourni des documents : utilise le tool search_documents "
+    "dès que la question peut s'y rapporter, et cite la source des passages utilisés."
+)
 MAX_TOOL_ITERATIONS = 3
 
 
@@ -13,7 +16,7 @@ class ChatService:
 
     @staticmethod
     async def process_compute(session_id: str, prompt: str) -> ComputeResponse:
-        history = await asyncio.to_thread(get_chat_history, session_id)
+        history = await get_chat_history(session_id)
 
         # L'historique en base ne contient que des tours user/assistant :
         # le message système est ajouté à chaque appel.
@@ -28,7 +31,7 @@ class ChatService:
         except InferenceError as e:
             return ComputeResponse(session_id=session_id, content=str(e), status="error")
 
-        await asyncio.to_thread(save_exchange, session_id, prompt, answer)
+        await save_exchange(session_id, prompt, answer)
         return ComputeResponse(session_id=session_id, content=answer)
 
     @staticmethod

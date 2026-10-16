@@ -1,12 +1,51 @@
 import json
-import asyncio
-from typing import Any, Callable, Dict, List
+import asyncpg
+from typing import Any, Awaitable, Callable, Dict, List
+from src.api.services import database
+from src.api.services.embeddings import embed, EmbeddingError
+
+# Limites propres au contexte du modèle.
+DEFAULT_SEARCH_RESULTS = 5
+MAX_SEARCH_RESULTS = 10
+
+
+# ─── Tools ──────────────────────────────────────────────────────────────────
+
+async def search_documents(query: str, k: int = DEFAULT_SEARCH_RESULTS) -> str:
+    k = max(1, min(int(k), MAX_SEARCH_RESULTS))
+    [embedding] = await embed([query])
+    results = await database.search_chunks(embedding, k)
+    if not results:
+        return "Aucun document indexé."
+    return "\n\n".join(
+        f"[{i}] {r['source']} (score {r['score']:.2f})\n{r['content']}"
+        for i, r in enumerate(results, 1)
+    )
+
 
 # ─── Registre ───────────────────────────────────────────────────────────────
 
-# Chaque entrée : {"function": callable, "description": str, "parameters": JSON Schema}.
-# Vide pour l'instant : les futurs tools (recherche RAG...) se déclarent ici.
-TOOLS: Dict[str, Dict[str, Any]] = {}
+# Chaque entrée : {"function": coroutine, "description": str, "parameters": JSON Schema}.
+TOOLS: Dict[str, Dict[str, Any]] = {
+    "search_documents": {
+        "function": search_documents,
+        "description": (
+            "Recherche sémantique dans les documents fournis par l'utilisateur. "
+            "Renvoie les passages les plus pertinents avec leur source."
+        ),
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "query": {"type": "string", "description": "Ce que l'on cherche, formulé en langage naturel."},
+                "k": {
+                    "type": "integer",
+                    "description": f"Nombre de passages à renvoyer (défaut {DEFAULT_SEARCH_RESULTS}, max {MAX_SEARCH_RESULTS}).",
+                },
+            },
+            "required": ["query"],
+        },
+    },
+}
 
 TOOL_SCHEMAS: List[Dict[str, Any]] = [
     {
@@ -17,7 +56,7 @@ TOOL_SCHEMAS: List[Dict[str, Any]] = [
 ]
 
 
-async def execute_tool(name: str, raw_arguments: str) -> str:
+async def execute_tool(name: str, raw_arguments: str | Dict[str, Any] | None) -> str:
     """
     Exécute un tool demandé par le modèle. Ne lève jamais : toute erreur est
     renvoyée sous forme de texte pour que le modèle puisse corriger sa demande.
@@ -26,15 +65,22 @@ async def execute_tool(name: str, raw_arguments: str) -> str:
     if tool is None:
         return f"Erreur : tool inconnu '{name}'."
 
-    try:
-        arguments = json.loads(raw_arguments or "{}")
-    except json.JSONDecodeError:
-        return f"Erreur : arguments JSON invalides pour '{name}'."
+    # Les arguments sont normalement une chaîne JSON, mais certains
+    # fournisseurs renvoient directement un objet.
+    if isinstance(raw_arguments, dict):
+        arguments = raw_arguments
+    else:
+        try:
+            arguments = json.loads(raw_arguments or "{}")
+        except json.JSONDecodeError:
+            return f"Erreur : arguments JSON invalides pour '{name}'."
 
-    func: Callable[..., str] = tool["function"]
+    func: Callable[..., Awaitable[str]] = tool["function"]
     try:
-        return await asyncio.to_thread(func, **arguments)
-    except TypeError as e:
+        return await func(**arguments)
+    except (TypeError, ValueError) as e:
         return f"Erreur : arguments incorrects pour '{name}' ({e})."
-    except OSError as e:
-        return f"Erreur système : {e}"
+    except EmbeddingError as e:
+        return f"Erreur : {e}"
+    except (OSError, asyncpg.PostgresError) as e:
+        return f"Erreur de base de données : {e}"
