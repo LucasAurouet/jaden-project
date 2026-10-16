@@ -1,0 +1,46 @@
+# CLAUDE.md
+
+This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+
+## Project
+
+Homn Systems: a self-hosted personal assistant (LLM chat + tool calling + RAG). Python/FastAPI, two processes: an inference **server** (GPU machine or VPS) and a local web **client**. Code comments, docstrings and user-facing messages are written in French; keep that convention. Commit messages are in English and prefixed `feature:`, `fix:`, `hotfix:` or `refactor:`.
+
+## Commands
+
+```bash
+pip install -r requirements.txt      # a venv/ already exists at the repo root
+python main.py server                # backend on BIND_HOST:SERVER_PORT (default 0.0.0.0:8081)
+python main.py client                # web UI on http://127.0.0.1:CLIENT_PORT (default 8090)
+pwsh scripts/start-llama.ps1         # dev only: starts the chat + embeddings llama-server instances
+```
+
+There is no test suite, linter or build step. `main.py` mentions a `cli` mode, but it is not implemented.
+
+The server needs a reachable Postgres with the pgvector extension (`DATABASE_URL`). It creates the extension and tables on startup (`init_db`). No migrations exist; schema changes go in `src/api/services/database.py:init_db`.
+
+## Configuration
+
+All settings come from `.env`, read in `config.py`, which is the single source of truth (with defaults). The key settings:
+- `HOMN_KEY`: shared secret. The server checks it as `Authorization: Bearer` (`src/api/dependencies.py:verify_token`), and the client sends it.
+- `LLM_BASE_URL` / `LLM_API_KEY` / `LLM_MODEL`: any OpenAI-compatible provider (local llama-server, Mistral API…). The base URL has no `/v1`, which the code appends.
+- `EMBEDDING_BASE_URL` / `EMBEDDING_MODEL` / `EMBEDDING_DIM`: OpenAI-compatible `/v1/embeddings`. `EMBEDDING_DIM` is fixed in the `chunks` table, and startup fails on a mismatch, so changing models means reindexing.
+- `SERVER_IP` / `SERVER_PORT`: where the client finds the server. `SERVER_PORT` is also the server's listen port.
+- `LLAMA_*` keys: read only by `scripts/start-llama.ps1`. That script derives the llama-server ports from `LLM_BASE_URL` / `EMBEDDING_BASE_URL`, which must be loopback.
+
+## Architecture
+
+```
+browser (src/client/static, vanilla JS) ──/api/*──▶ client (src/client/web.py)
+    ──/v1/* + Bearer HOMN_KEY──▶ server (src/api/server.py)
+    ──▶ LLM provider (/v1/chat/completions) + embedding provider (/v1/embeddings) + Postgres/pgvector
+```
+
+- **The client is a thin relay.** `src/client/services/homn.py` forwards `/api/compute`, `/api/documents` and `/api/metrics` to the server with the key. It has no database or agent logic, and all state lives server-side.
+- **The agent loop is server-side**, in `src/api/services/chat.py`. `POST /v1/compute` loads the session history from Postgres, prepends `SYSTEM_PROMPT` and calls the LLM with `TOOL_SCHEMAS`. It runs tool calls for up to `MAX_TOOL_ITERATIONS` (3) iterations, then forces a final answer with no tools. Only the user prompt and the final assistant answer are saved (`save_exchange`). Intermediate tool messages exist only in memory.
+- **Tools** are registered in the `TOOLS` dict in `src/api/services/tools.py` (async function, description and JSON-Schema parameters), and `TOOL_SCHEMAS` is derived from it. `execute_tool` never raises: errors come back as text so the model can retry. To add a tool, add an entry there.
+- **RAG**: `src/api/services/documents.py` checks the extension and size of uploads (text formats only, 512 KB max). It splits the text into paragraph-grouped chunks (`CHUNK_SIZE`/`CHUNK_OVERLAP` in characters), embeds them in batches (`embeddings.py`) and stores them in `documents`/`chunks`, which have an HNSW cosine index. The `search_documents` tool queries them.
+- **Raw OpenAI-compatible proxy**: `src/api/routers/inference.py` streams `/v1/chat/completions` and `/v1/models` straight to the LLM provider, behind the Homn key, with no agent or tools.
+- **Upstream HTTP**: each upstream (LLM, embeddings, client→server) has a module-level `httpx.AsyncClient` created and closed in the FastAPI `lifespan`. Upstream failures are mapped to domain exceptions (`UpstreamUnavailable`/`UpstreamTimeout` become 502/504 in `server.py`, and `InferenceError` becomes `ComputeResponse(status="error")`).
+- **Metrics**: `/v1/metrics/all` combines psutil/NVML system stats with llama-server's Prometheus `/metrics`. The llama-server stats are empty for other providers. The chat llama-server must run with `--jinja` (tool calling) and `--metrics`.
+- Shared Pydantic models live in `src/schemas.py`.
