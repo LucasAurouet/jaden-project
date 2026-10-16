@@ -182,7 +182,7 @@ async function sendMessage() {
     userInput.value = "";
     sendBtn.disabled = true;
 
-    const loader = showLoader();
+    const reply = createStreamingReply();
 
     try {
         const response = await fetch(API_URL, {
@@ -194,27 +194,105 @@ async function sendMessage() {
             })
         });
 
-        if (!response.ok) throw new Error(`Status: ${response.status}`);
-
-        const data = await response.json();
-        loader.remove();
-
-        if (data.status === "success") {
-            appendMessage(data.content, "assistant");
-            exchangeCount++;
-            document.getElementById("msg-counter").textContent =
-                `${pad(exchangeCount)} ÉCHANGE${exchangeCount > 1 ? 'S' : ''}`;
-        } else {
-            appendMessage(data.content, "error");
+        if (!response.ok) {
+            reply.fail(await errorMessage(response));
+            return;
         }
 
+        for await (const event of readEvents(response)) {
+            if (event.type === "delta") {
+                reply.append(event.content);
+            } else if (event.type === "tool") {
+                reply.setStatus(`OUTIL // ${event.name}`);
+            } else if (event.type === "error") {
+                reply.fail(event.message);
+                return;
+            } else if (event.type === "done") {
+                reply.finish();
+                exchangeCount++;
+                document.getElementById("msg-counter").textContent =
+                    `${pad(exchangeCount)} ÉCHANGE${exchangeCount > 1 ? 'S' : ''}`;
+                return;
+            }
+        }
+        // Flux terminé sans "done" ni "error" : la connexion a été coupée.
+        reply.fail("Flux interrompu avant la fin de la réponse.");
+
     } catch (error) {
-        loader.remove();
-        appendMessage(`Client local injoignable (${error.message}).`, "error");
+        reply.fail(`Client local injoignable (${error.message}).`);
     } finally {
         sendBtn.disabled = false;
         userInput.focus();
     }
+}
+
+
+// Lit un flux SSE ("data: <json>" séparés par une ligne vide) et renvoie chaque événement.
+async function* readEvents(response) {
+    const reader = response.body.pipeThrough(new TextDecoderStream()).getReader();
+    let buffer = "";
+    while (true) {
+        const { value, done } = await reader.read();
+        if (done) return;
+        buffer += value;
+        const blocks = buffer.split("\n\n");
+        buffer = blocks.pop();
+        for (const block of blocks) {
+            const data = block.split("\n")
+                .filter(line => line.startsWith("data:"))
+                .map(line => line.slice(5).trim())
+                .join("\n");
+            if (data) yield JSON.parse(data);
+        }
+    }
+}
+
+
+// Message assistant rempli au fil du flux, avec une ligne d'état sous le texte.
+function createStreamingReply() {
+    const { msg, body } = createMessage("assistant");
+    const status = document.createElement("span");
+    status.className = "thinking";
+    msg.append(status);
+
+    let text = "";
+    let frame = null;
+
+    const isAtBottom = () => chatBox.scrollHeight - chatBox.scrollTop - chatBox.clientHeight < 40;
+    const render = () => {
+        cancelAnimationFrame(frame);
+        frame = null;
+        const follow = isAtBottom();
+        body.innerHTML = DOMPurify.sanitize(marked.parse(text));
+        if (follow) chatBox.scrollTop = chatBox.scrollHeight;
+    };
+    const setStatus = (label) => {
+        status.textContent = label;
+        status.hidden = false;
+        chatBox.scrollTop = chatBox.scrollHeight;
+    };
+
+    setStatus("TRAITEMENT EN COURS");
+
+    return {
+        setStatus,
+        append(delta) {
+            text += delta;
+            status.hidden = true;
+            // Un seul rendu Markdown par frame, quel que soit le débit de tokens.
+            frame ??= requestAnimationFrame(render);
+        },
+        finish() {
+            status.remove();
+            render();
+            body.querySelectorAll('pre code').forEach(el => hljs.highlightElement(el));
+        },
+        fail(message) {
+            // Une réponse partielle reste affichée mais n'est pas enregistrée par le serveur.
+            if (text) this.finish(); else msg.remove();
+            appendMessage(message, "error");
+        },
+    };
 }
 
 
@@ -253,13 +331,6 @@ function appendMessage(text, sender) {
     } else {
         body.textContent = text;
     }
-    chatBox.scrollTop = chatBox.scrollHeight;
-    return msg;
-}
-
-function showLoader() {
-    const { msg, body } = createMessage("assistant");
-    body.innerHTML = `<span class="thinking">TRAITEMENT EN COURS</span>`;
     chatBox.scrollTop = chatBox.scrollHeight;
     return msg;
 }

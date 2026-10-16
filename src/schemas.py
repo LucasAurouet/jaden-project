@@ -4,11 +4,6 @@ class ComputeRequest(BaseModel):
     prompt: str
     session_id: str
 
-class ComputeResponse(BaseModel):
-    session_id: str
-    content: str
-    status: str = "success"
-
 class LlamaMetrics(BaseModel):
     tg_tokens_per_sec: float | None = None    
     tg_tokens_per_sec_3s: float | None = None   

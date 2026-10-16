@@ -1,7 +1,7 @@
 import httpx
 from typing import Any, Dict, List
 from config import SERVER_IP, SERVER_PORT, HOMN_KEY, LLM_TIMEOUT
-from src.schemas import ComputeRequest, ComputeResponse
+from src.schemas import ComputeRequest
 
 SERVER_URL = f"http://{SERVER_IP}:{SERVER_PORT}"
 
@@ -26,34 +26,6 @@ async def stop_client():
         await _client.aclose()
 
 
-async def compute(session_id: str, prompt: str) -> ComputeResponse:
-    """Transmet la requête à l'agent du serveur. Toute erreur est renvoyée en status="error"."""
-    def error(message: str) -> ComputeResponse:
-        return ComputeResponse(session_id=session_id, content=message, status="error")
-
-    payload = ComputeRequest(session_id=session_id, prompt=prompt).model_dump()
-    try:
-        response = await _client.post("/v1/compute", json=payload)
-    except httpx.ConnectError:
-        return error(f"Serveur d'inférence injoignable ({SERVER_URL}).")
-    except httpx.TimeoutException:
-        return error("Le serveur d'inférence a mis trop de temps à répondre.")
-
-    if response.status_code == 401:
-        return error("Clé Homn refusée par le serveur (vérifiez HOMN_KEY dans .env).")
-    if response.status_code != 200:
-        try:
-            detail = response.json()["error"]["message"]
-        except (ValueError, KeyError, TypeError):
-            detail = response.text
-        return error(f"Erreur HTTP {response.status_code} : {detail}")
-
-    try:
-        return ComputeResponse.model_validate(response.json())
-    except ValueError:
-        return error("La réponse du serveur n'est pas au format attendu.")
-
-
 class ServerError(Exception):
     """Requête refusée ou impossible ; status est le code HTTP à renvoyer au navigateur."""
 
@@ -62,15 +34,22 @@ class ServerError(Exception):
         self.status = status
 
 
-async def _request(method: str, path: str, **kwargs) -> httpx.Response:
-    """Requête authentifiée vers le serveur ; lève ServerError si elle n'aboutit pas."""
+async def _request(method: str, path: str, stream: bool = False, **kwargs) -> httpx.Response:
+    """
+    Requête authentifiée vers le serveur ; lève ServerError si elle n'aboutit pas.
+    Avec stream=True, le corps reste à lire et la réponse à fermer par l'appelant.
+    """
+    request = _client.build_request(method, path, **kwargs)
     try:
-        response = await _client.request(method, path, **kwargs)
+        response = await _client.send(request, stream=stream)
     except httpx.ConnectError as e:
         raise ServerError(502, f"Serveur d'inférence injoignable ({SERVER_URL}).") from e
     except httpx.TimeoutException as e:
         raise ServerError(504, "Le serveur d'inférence a mis trop de temps à répondre.") from e
 
+    if response.is_error:
+        await response.aread()
+        await response.aclose()
     if response.status_code == 401:
         raise ServerError(502, "Clé Homn refusée par le serveur (vérifiez HOMN_KEY dans .env).")
     if response.is_error:
@@ -81,6 +60,12 @@ async def _request(method: str, path: str, **kwargs) -> httpx.Response:
             detail = response.text
         raise ServerError(response.status_code, str(detail))
     return response
+
+
+async def compute(session_id: str, prompt: str) -> httpx.Response:
+    """Ouvre le flux SSE de l'agent du serveur (voir ChatService.stream_compute)."""
+    payload = ComputeRequest(session_id=session_id, prompt=prompt).model_dump()
+    return await _request("POST", "/v1/compute", stream=True, json=payload)
 
 
 async def upload_document(filename: str, content: bytes, content_type: str | None) -> Dict[str, Any]:
