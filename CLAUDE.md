@@ -44,3 +44,9 @@ browser (src/client/static, vanilla JS) ──/api/*──▶ client (src/client
 - **Upstream HTTP**: each upstream (LLM, embeddings, client→server) has a module-level `httpx.AsyncClient` created and closed in the FastAPI `lifespan`. Upstream failures are mapped to domain exceptions (`UpstreamUnavailable`/`UpstreamTimeout` become 502/504 in `server.py`, and `InferenceError` becomes `ComputeResponse(status="error")`).
 - **Metrics**: `/v1/metrics/all` combines psutil/NVML system stats with llama-server's Prometheus `/metrics`. The llama-server stats are empty for other providers. The chat llama-server must run with `--jinja` (tool calling) and `--metrics`.
 - Shared Pydantic models live in `src/schemas.py`.
+
+## Référence
+- ~/hdd/open-webui (v0.12.3) est une référence de conception, en lecture seule.
+- Quand je demande comment Open WebUI fait quelque chose, va lire son code
+  (points d'entrée : backend/open_webui/models, routers, utils/middleware.py, retrieval/).
+- Ne recopie jamais son code : explique le principe et adapte-le à notre architecture.
