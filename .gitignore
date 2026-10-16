@@ -19,3 +19,6 @@ venv/
 # Misc
 .assets/
 assets/
+
+# Journaux des llama-server (scripts/start-llama.ps1)
+logs/
