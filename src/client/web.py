@@ -4,9 +4,7 @@ from fastapi import FastAPI
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 from src.client.services import homn
-from src.client.services.database import init_db
 from src.client.routers.chat import router as chat_router
-from src.client.routers.workspace import router as workspace_router
 from src.client.routers.metrics import router as metrics_router
 
 static_path = os.path.join(os.path.dirname(__file__), "static")
@@ -14,7 +12,6 @@ static_path = os.path.join(os.path.dirname(__file__), "static")
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    init_db()
     await homn.start_client()
     print(f"Serveur d'inférence : {homn.SERVER_URL}")
     yield
@@ -28,7 +25,6 @@ async def root():
     return FileResponse(os.path.join(static_path, "index.html"))
 
 app.include_router(chat_router, prefix="/api")
-app.include_router(workspace_router, prefix="/api")
 app.include_router(metrics_router, prefix="/api")
 
 app.mount("/static", StaticFiles(directory=static_path), name="static")

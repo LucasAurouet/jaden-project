@@ -1,5 +1,6 @@
 import re
 import httpx
+from typing import Any, Dict, List
 from config import LLM_BASE_URL, LLM_TIMEOUT
 from src.schemas import LlamaMetrics
 
@@ -37,6 +38,39 @@ async def forward(method: str, path: str, body: bytes | None = None) -> httpx.Re
         raise UpstreamUnavailable() from e
     except httpx.TimeoutException as e:
         raise UpstreamTimeout() from e
+
+
+class InferenceError(Exception):
+    """Le moteur d'inférence n'a pas pu produire de réponse exploitable."""
+
+
+async def chat_completion(
+    messages: List[Dict[str, Any]],
+    tools: List[Dict[str, Any]] | None = None,
+) -> Dict[str, Any]:
+    """Renvoie le message assistant complet (content et éventuels tool_calls)."""
+    payload: Dict[str, Any] = {"messages": messages}
+    if tools:
+        payload["tools"] = tools
+
+    try:
+        response = await _client.post("/v1/chat/completions", json=payload)
+    except httpx.ConnectError as e:
+        raise InferenceError("Le moteur d'inférence (llama-server) est injoignable.") from e
+    except httpx.TimeoutException as e:
+        raise InferenceError("Le moteur d'inférence n'a pas répondu à temps.") from e
+
+    if response.status_code != 200:
+        try:
+            detail = response.json()["error"]["message"]
+        except (ValueError, KeyError, TypeError):
+            detail = response.text
+        raise InferenceError(f"Erreur HTTP {response.status_code} : {detail}")
+
+    try:
+        return response.json()["choices"][0]["message"]
+    except (ValueError, KeyError, IndexError) as e:
+        raise InferenceError("La réponse du moteur d'inférence n'est pas au format attendu.") from e
 
 
 async def get_llama_metrics_from_api() -> LlamaMetrics:

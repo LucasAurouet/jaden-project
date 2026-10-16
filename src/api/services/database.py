@@ -2,7 +2,7 @@ import sqlite3
 from pathlib import Path
 from typing import List, Dict
 
-# Base locale du poste client : src/client/data/homn.db
+# Base du serveur : src/api/data/homn.db
 DATA_DIR = Path(__file__).parent.parent / "data"
 DB_PATH = DATA_DIR / "homn.db"
 

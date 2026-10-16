@@ -1,51 +1,24 @@
 import asyncio
 from typing import Any, List, Dict
-from src.client.services import workspace
-from src.client.services.database import save_exchange, get_chat_history
-from src.client.services.homn import chat_completion, InferenceError
-from src.client.services.tools import TOOL_SCHEMAS, execute_tool
+from src.api.services.database import save_exchange, get_chat_history
+from src.api.services.inference import chat_completion, InferenceError
+from src.api.services.tools import TOOL_SCHEMAS, execute_tool
 from src.schemas import ComputeResponse
 
-BASE_SYSTEM_PROMPT = (
-    "Tu es Homn, un assistant développeur personnel et local. "
-    "Tu peux consulter le workspace grâce aux tools list_dir, read_file et search : "
-    "utilise-les plutôt que de deviner le contenu d'un fichier. "
-    f"Les fichiers envoyés par l'utilisateur depuis l'interface sont déposés dans {workspace.UPLOAD_DIR}/."
-)
-MAX_TREE_LINES = 200
+SYSTEM_PROMPT = "Tu es Homn, un assistant développeur personnel et local."
 MAX_TOOL_ITERATIONS = 3
-
-
-def _workspace_tree() -> str:
-    try:
-        return workspace.tree()
-    except workspace.WorkspaceError as e:
-        return str(e)
-
-
-def build_system_prompt(tree: str) -> str:
-    """
-    Le contexte du workspace est reconstruit à chaque appel et placé dans
-    l'unique message système, en tête de conversation. L'historique en base
-    ne contient ainsi que des tours user/assistant, sans doublons.
-    """
-    tree_lines = tree.splitlines()
-    if len(tree_lines) > MAX_TREE_LINES:
-        tree_lines = tree_lines[:MAX_TREE_LINES] + ["... (arborescence tronquée)"]
-    return BASE_SYSTEM_PROMPT + "\n\nArborescence du workspace :\n" + "\n".join(tree_lines)
 
 
 class ChatService:
 
     @staticmethod
     async def process_compute(session_id: str, prompt: str) -> ComputeResponse:
-        history, tree = await asyncio.gather(
-            asyncio.to_thread(get_chat_history, session_id),
-            asyncio.to_thread(_workspace_tree),
-        )
+        history = await asyncio.to_thread(get_chat_history, session_id)
 
+        # L'historique en base ne contient que des tours user/assistant :
+        # le message système est ajouté à chaque appel.
         messages = (
-            [{"role": "system", "content": build_system_prompt(tree)}]
+            [{"role": "system", "content": SYSTEM_PROMPT}]
             + history
             + [{"role": "user", "content": prompt}]
         )

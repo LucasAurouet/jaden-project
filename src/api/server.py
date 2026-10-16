@@ -2,13 +2,16 @@ from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
 from contextlib import asynccontextmanager
 from config import SERVER_NAME
+from src.api.services.database import init_db
 from src.api.services.inference import start_client, stop_client, UpstreamUnavailable, UpstreamTimeout
 from src.api.routers.inference import router as inference_router
+from src.api.routers.chat import router as chat_router
 from src.api.routers.system import router as system_router
 from src.api.routers.metrics import router as metrics_router
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    init_db()
     await start_client()
     yield
     await stop_client()
@@ -35,4 +38,5 @@ async def root():
 
 app.include_router(system_router, prefix="/v1")
 app.include_router(inference_router, prefix="/v1")
+app.include_router(chat_router, prefix="/v1")
 app.include_router(metrics_router, prefix="/v1")

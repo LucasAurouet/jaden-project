@@ -89,6 +89,12 @@
                     <div><dt>LECTURE</dt><dd id="read-pp">—</dd></div>
                     <div><dt>UPTIME</dt><dd id="read-uptime">—</dd></div>
                 </dl>
+
+                <dl class="specs">
+                    <div><dt>MODÈLE</dt><dd>QWEN·2.5·CODER·7B</dd></div>
+                    <div><dt>MOTEUR</dt><dd>LLAMA·CPP</dd></div>
+                    <div><dt>MODE</dt><dd class="live">LOCAL·SOUVERAIN</dd></div>
+                </dl>
             </section>
 
             <!-- Terminal de dialogue -->
@@ -103,7 +109,6 @@
                     <div class="boot" id="boot">
                         <p class="boot__title">HOMN//SYS — SÉQUENCE D'INITIALISATION</p>
                         <p>&gt; MÉMOIRE LOCALE <span class="boot__dots"></span> <span class="ok">OK</span></p>
-                        <p>&gt; WORKSPACE <span class="boot__dots"></span> <span class="ok">MONTÉ</span></p>
                         <p>&gt; LIAISON INFÉRENCE <span class="boot__dots"></span> <span id="boot-link" class="wait">EN ATTENTE</span></p>
                         <p class="boot__note">Aucune donnée ne quitte ce réseau. Entrez une requête pour commencer.</p>
                     </div>
@@ -115,44 +120,6 @@
                     <button type="submit" class="btn btn--primary" id="send-btn">TRANSMETTRE</button>
                 </form>
             </section>
-
-            <!-- Espace de travail -->
-            <aside class="panel panel--workspace" aria-label="Espace de travail">
-                <header class="panel__head">
-                    <span class="panel__idx">03</span>
-                    <span class="panel__title">WORKSPACE</span>
-                    <button id="refresh-workspace-btn" class="icon-btn" title="Actualiser" aria-label="Actualiser la liste">
-                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
-                            <polyline points="23 4 23 10 17 10"></polyline>
-                            <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"></path>
-                        </svg>
-                    </button>
-                </header>
-
-                <div class="upload">
-                    <label for="file-input" class="btn btn--ghost">
-                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
-                            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
-                            <polyline points="17 8 12 3 7 8"></polyline>
-                            <line x1="12" y1="3" x2="12" y2="15"></line>
-                        </svg>
-                        AJOUTER UN FICHIER
-                    </label>
-                    <input type="file" id="file-input" hidden accept=".txt,.md,.py,.js,.json,.html,.css,.csv,.xml,.ini,.yaml,.yml">
-                    <span id="upload-status" class="upload__status"></span>
-                </div>
-
-                <div class="files">
-                    <div class="files__label">ARBORESCENCE</div>
-                    <ul id="workspace-files" class="file-list"></ul>
-                </div>
-
-                <dl class="specs">
-                    <div><dt>MODÈLE</dt><dd>QWEN·2.5·CODER·7B</dd></div>
-                    <div><dt>MOTEUR</dt><dd>LLAMA·CPP</dd></div>
-                    <div><dt>MODE</dt><dd class="live">LOCAL·SOUVERAIN</dd></div>
-                </dl>
-            </aside>
 
         </main>
     </div>

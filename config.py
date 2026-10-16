@@ -1,5 +1,4 @@
 import os
-from pathlib import Path
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -26,8 +25,3 @@ SERVER_PORT: int = int(os.getenv("SERVER_PORT", "8081"))
 # Port de l'interface web locale (toujours servie sur 127.0.0.1).
 CLIENT_PORT: int = int(os.getenv("CLIENT_PORT", "8090"))
 
-# Workspace de l'agent, sur le poste du client. Par défaut : le dossier
-# depuis lequel le client a été lancé.
-WORKSPACE_DIR: Path = Path(
-    os.getenv("WORKSPACE_DIR", str(Path.cwd()))
-).expanduser().resolve()

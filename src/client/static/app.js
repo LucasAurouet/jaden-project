@@ -1,16 +1,11 @@
 const SESSION_ID = 'session-' + Date.now() + '-' + Math.random().toString(36).substring(2, 11);
 const API_URL = "/api/compute";
-const UPLOAD_URL = "/api/workspace/upload";
-const WORKSPACE_URL = "/api/workspace/inspect";
 const METRICS_URL = "/api/metrics";
 
 const chatBox = document.getElementById("chat-box");
 const userInput = document.getElementById("user-input");
 const promptForm = document.getElementById("prompt-form");
 const sendBtn = document.getElementById("send-btn");
-const fileListContainer = document.getElementById("workspace-files");
-const fileInput = document.getElementById("file-input");
-const refreshWorkspaceBtn = document.getElementById("refresh-workspace-btn");
 
 const HISTORY_SIZE = 40;
 const history = {
@@ -30,7 +25,6 @@ document.addEventListener('DOMContentLoaded', () => {
     setInterval(updateMetrics, 2000);
     tickClock();
     setInterval(tickClock, 1000);
-    fetchWorkspaceFiles();
     userInput.focus();
 });
 
@@ -39,22 +33,6 @@ promptForm.addEventListener("submit", (e) => {
     e.preventDefault();
     sendMessage();
 });
-
-fileInput.addEventListener("change", async (event) => {
-    const file = event.target.files[0];
-    if (!file) return;
-
-    await uploadFile(file);
-
-    event.target.value = '';
-});
-
-refreshWorkspaceBtn.addEventListener("click", async () => {
-    refreshWorkspaceBtn.disabled = true;
-    await fetchWorkspaceFiles();
-    refreshWorkspaceBtn.disabled = false;
-});
-
 
 // ─── UTILITAIRES ────────────────────────────────────────────────────────────
 const pad = (n) => String(n).padStart(2, '0');
@@ -69,87 +47,6 @@ function tickClock() {
 
 
 const cssVar = (name) => getComputedStyle(document.documentElement).getPropertyValue(name).trim();
-
-
-// ─── WORKSPACE ──────────────────────────────────────────────────────────────
-async function uploadFile(file) {
-    const statusLabel = document.getElementById('upload-status');
-    const setStatus = (state, text) => {
-        statusLabel.dataset.state = state;
-        statusLabel.textContent = text;
-    };
-    setStatus("busy", "▸ Envoi en cours…");
-
-    const formData = new FormData();
-    formData.append("file", file);
-
-    try {
-        const response = await fetch(UPLOAD_URL, {
-            method: "POST",
-            body: formData
-        });
-
-        const result = await response.json();
-
-        if (response.ok) {
-            setStatus("ok", `✔ Ajouté au workspace : ${result.path}`);
-            await fetchWorkspaceFiles();
-        } else {
-            setStatus("error", `✖ ${result.detail || 'Impossible de charger'}`);
-        }
-    } catch (error) {
-        setStatus("error", "✖ Client local hors ligne");
-        console.error("Erreur d'upload:", error);
-    }
-}
-
-
-async function fetchWorkspaceFiles() {
-    try {
-        const response = await fetch(WORKSPACE_URL);
-        const data = await response.json().catch(() => null);
-
-        if (!response.ok) throw new Error(data?.detail || `Erreur HTTP: ${response.status}`);
-
-        renderWorkspaceFiles(data);
-
-    } catch (error) {
-        console.error("Impossible de récupérer la liste des fichiers du workspace :", error);
-        const li = document.createElement("li");
-        li.className = "workspace-error";
-        li.textContent = `✖ ${error.message}`;
-        li.title = error.message;
-        fileListContainer.replaceChildren(li);
-    }
-}
-
-
-function renderWorkspaceFiles(files) {
-    fileListContainer.innerHTML = "";
-
-    if (!files || files.length === 0) {
-        fileListContainer.innerHTML = `<li class="workspace-empty-message">Workspace vide</li>`;
-        return;
-    }
-
-    files.forEach(file => {
-        const li = document.createElement("li");
-
-        li.classList.add("workspace-file-item");
-        
-        const name = document.createElement("span");
-        name.className = "workspace-file-name";
-        name.title = file.name;
-        name.textContent = file.name;
-
-        const size = document.createElement("span");
-        size.className = "workspace-file-size";
-        size.textContent = `${(file.size / 1024).toFixed(1)} Ko`;
-
-        li.append(name, size);
-        fileListContainer.appendChild(li);
-    });
-}
 
 
 // ─── DIALOGUE ───────────────────────────────────────────────────────────────
