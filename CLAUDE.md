@@ -17,7 +17,17 @@ pwsh scripts/start-llama.ps1         # dev only: starts the chat + embeddings ll
 
 There is no test suite, linter or build step. `main.py` mentions a `cli` mode, but it is not implemented.
 
-The server needs a reachable Postgres with the pgvector extension (`DATABASE_URL`). It creates the extension and tables on startup (`init_db`). No migrations exist; schema changes go in `src/api/services/database.py:init_db`.
+The server needs a reachable Postgres with the pgvector extension (`DATABASE_URL`). On startup, `init_db` applies the pending Alembic migrations (`alembic upgrade head`, run in a thread), then opens the asyncpg pool and checks the embedding dimension.
+
+**Schema changes go through Alembic migrations, never through `init_db`.** There is no ORM: migrations are raw SQL (`op.execute`), so `--autogenerate` is not used. Migrations live in `src/api/migrations/versions/`, and `env.py` reads `DATABASE_URL` from `config.py` (with the `postgresql+asyncpg` driver). A migration that has been applied somewhere is never edited: write a new one instead.
+
+```bash
+alembic revision -m "add tool_trace to messages"   # new empty migration, then write upgrade()/downgrade()
+alembic upgrade head                               # apply (the server also does this on startup)
+alembic downgrade -1                               # undo the last migration
+alembic current / alembic history                  # where the database stands
+alembic upgrade head --sql                         # print the SQL without touching the database
+```
 
 ## Configuration
 

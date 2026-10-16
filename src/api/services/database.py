@@ -1,7 +1,14 @@
+import asyncio
 import asyncpg
+from pathlib import Path
+from alembic import command
+from alembic.config import Config as AlembicConfig
 from pgvector.asyncpg import register_vector
+from sqlalchemy.exc import SQLAlchemyError
 from typing import Any, Dict, List, Tuple
 from config import DATABASE_URL, EMBEDDING_DIM
+
+ALEMBIC_INI = Path(__file__).resolve().parents[3] / "alembic.ini"
 
 _pool: asyncpg.Pool | None = None
 
@@ -10,69 +17,28 @@ class DatabaseError(Exception):
     """Base injoignable ou incompatible avec la configuration."""
 
 
+def _upgrade_schema():
+    """Applique les migrations Alembic manquantes (alembic upgrade head)."""
+    cfg = AlembicConfig(str(ALEMBIC_INI))
+    cfg.attributes["embedded"] = True
+    command.upgrade(cfg, "head")
+
+
 async def init_db():
     global _pool
     try:
-        # L'extension doit exister avant que le pool n'enregistre le type vector.
-        conn = await asyncpg.connect(DATABASE_URL)
-    except (OSError, asyncpg.PostgresError) as e:
-        raise DatabaseError(f"Connexion à Postgres impossible ({e}).") from e
-    try:
-        await conn.execute("CREATE EXTENSION IF NOT EXISTS vector")
-    finally:
-        await conn.close()
+        # Dans un thread : env.py a sa propre boucle asyncio. Les migrations créent
+        # l'extension vector, qui doit exister avant que le pool n'enregistre le type.
+        await asyncio.to_thread(_upgrade_schema)
+        _pool = await asyncpg.create_pool(DATABASE_URL, init=register_vector)
+    except (OSError, asyncpg.PostgresError, SQLAlchemyError) as e:
+        raise DatabaseError(f"Connexion à Postgres ou migration du schéma impossible ({e}).") from e
 
-    _pool = await asyncpg.create_pool(DATABASE_URL, init=register_vector)
-
-    async with _pool.acquire() as conn, conn.transaction():
-        await conn.execute("""
-            CREATE TABLE IF NOT EXISTS sessions (
-                id TEXT PRIMARY KEY,
-                title TEXT DEFAULT 'Nouvelle discussion',
-                created_at TIMESTAMPTZ DEFAULT now()
-            )
-        """)
-        # Résumé glissant : remplace les messages d'id <= summary_upto dans le contexte du LLM.
-        await conn.execute("ALTER TABLE sessions ADD COLUMN IF NOT EXISTS summary TEXT")
-        await conn.execute("ALTER TABLE sessions ADD COLUMN IF NOT EXISTS summary_upto BIGINT NOT NULL DEFAULT 0")
-
-        # Uniquement les tours de conversation (user / assistant).
-        await conn.execute("""
-            CREATE TABLE IF NOT EXISTS messages (
-                id BIGSERIAL PRIMARY KEY,
-                session_id TEXT REFERENCES sessions(id) ON DELETE CASCADE,
-                role TEXT NOT NULL,
-                content TEXT NOT NULL,
-                created_at TIMESTAMPTZ DEFAULT now()
-            )
-        """)
-
-        await conn.execute("""
-            CREATE TABLE IF NOT EXISTS documents (
-                id BIGSERIAL PRIMARY KEY,
-                source TEXT NOT NULL,
-                created_at TIMESTAMPTZ DEFAULT now()
-            )
-        """)
-
-        await conn.execute(f"""
-            CREATE TABLE IF NOT EXISTS chunks (
-                id BIGSERIAL PRIMARY KEY,
-                document_id BIGINT NOT NULL REFERENCES documents(id) ON DELETE CASCADE,
-                position INT NOT NULL,
-                content TEXT NOT NULL,
-                embedding vector({EMBEDDING_DIM}) NOT NULL
-            )
-        """)
-        await conn.execute(
-            "CREATE INDEX IF NOT EXISTS chunks_embedding_idx ON chunks USING hnsw (embedding vector_cosine_ops)"
-        )
-
-        # Pour vector, atttypmod vaut la dimension déclarée.
-        dim = await conn.fetchval("""
-            SELECT atttypmod FROM pg_attribute
-            WHERE attrelid = 'chunks'::regclass AND attname = 'embedding'
-        """)
+    # Pour vector, atttypmod vaut la dimension déclarée.
+    dim = await _pool.fetchval("""
+        SELECT atttypmod FROM pg_attribute
+        WHERE attrelid = 'chunks'::regclass AND attname = 'embedding'
+    """)
     if dim != EMBEDDING_DIM:
         raise DatabaseError(
             f"La table chunks stocke des vecteurs de dimension {dim}, mais EMBEDDING_DIM vaut "
