@@ -1,42 +1,20 @@
 import json
 import asyncpg
 from typing import Any, Awaitable, Callable, Dict, List
-from config import RAG_MIN_SCORE, RAG_AUTO_MIN_SCORE
-from src.api.services import database
-from src.api.services.embeddings import embed, EmbeddingError
+from config import RAG_MIN_SCORE
+from src.api.services import rag
+from src.api.services.embeddings import EmbeddingError
 
 # Limites propres au contexte du modèle.
 DEFAULT_SEARCH_RESULTS = 5
 MAX_SEARCH_RESULTS = 10
-AUTO_SEARCH_RESULTS = 3
-
-
-def format_passages(results: List[Dict[str, Any]]) -> str:
-    return "\n\n".join(
-        f"[{i}] {r['source']} (score {r['score']:.2f})\n{r['content']}"
-        for i, r in enumerate(results, 1)
-    )
-
-
-async def auto_search(query: str) -> List[Dict[str, Any]]:
-    """
-    Recherche automatique faite avant chaque réponse. Ne lève jamais : un
-    fournisseur d'embeddings ou une base indisponible ne doit pas bloquer le chat.
-    """
-    try:
-        [embedding] = await embed([query])
-        candidates = await database.search_chunks(embedding, AUTO_SEARCH_RESULTS)
-    except (EmbeddingError, OSError, asyncpg.PostgresError):
-        return []
-    return [r for r in candidates if r["score"] >= RAG_AUTO_MIN_SCORE]
 
 
 # ─── Tools ──────────────────────────────────────────────────────────────────
 
 async def search_documents(query: str, k: int = DEFAULT_SEARCH_RESULTS) -> str:
     k = max(1, min(int(k), MAX_SEARCH_RESULTS))
-    [embedding] = await embed([query])
-    candidates = await database.search_chunks(embedding, k)
+    candidates = await rag.search(query, k)
     if not candidates:
         return "Aucun document indexé."
     results = [r for r in candidates if r["score"] >= RAG_MIN_SCORE]
@@ -45,7 +23,7 @@ async def search_documents(query: str, k: int = DEFAULT_SEARCH_RESULTS) -> str:
             f"Aucun passage suffisamment pertinent (meilleur score {candidates[0]['score']:.2f}, "
             f"seuil {RAG_MIN_SCORE:.2f}). Reformule la requête ou réponds sans les documents."
         )
-    return format_passages(results)
+    return rag.format_passages(results)
 
 
 # ─── Registre ───────────────────────────────────────────────────────────────

@@ -3,7 +3,8 @@ from typing import Any, AsyncIterator, Iterator, List, Dict
 from config import CONTEXT_TOKEN_BUDGET, RAG_AUTO_SEARCH
 from src.api.services.database import save_exchange, get_chat_context, save_summary
 from src.api.services.inference import stream_chat_completion, complete_chat, InferenceError
-from src.api.services.tools import TOOL_SCHEMAS, execute_tool, auto_search, format_passages
+from src.api.services.rag import auto_search, format_passages
+from src.api.services.tools import TOOL_SCHEMAS, execute_tool
 
 SYSTEM_PROMPT = (
     "Tu es Homn, un assistant personnel. "

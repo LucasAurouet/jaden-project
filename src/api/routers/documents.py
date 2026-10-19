@@ -1,8 +1,8 @@
 from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
 from typing import Any, Dict, List
 from src.api.dependencies import verify_token
-from src.api.services import database, documents
-from src.api.services.documents import DocumentError
+from src.api.services import database, rag
+from src.api.services.rag import DocumentError
 from src.api.services.embeddings import EmbeddingError
 
 router = APIRouter(tags=["Documents (RAG)"], dependencies=[Depends(verify_token)])
@@ -12,9 +12,9 @@ router = APIRouter(tags=["Documents (RAG)"], dependencies=[Depends(verify_token)
 async def upload_document(file: UploadFile = File(...)) -> Dict[str, Any]:
     # Un octet de plus que la limite suffit à détecter un fichier trop gros
     # sans le charger entièrement en mémoire.
-    content = await file.read(documents.MAX_UPLOAD_SIZE + 1)
+    content = await file.read(rag.MAX_UPLOAD_SIZE + 1)
     try:
-        return await documents.ingest(file.filename, content)
+        return await rag.ingest(file.filename, content)
     except DocumentError as e:
         raise HTTPException(status_code=400, detail=str(e))
     except EmbeddingError as e:

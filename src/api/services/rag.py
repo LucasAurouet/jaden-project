@@ -1,8 +1,10 @@
 import os
+import asyncpg
 from pathlib import Path
 from typing import Any, Dict, List
+from config import RAG_AUTO_MIN_SCORE
 from src.api.services import database
-from src.api.services.embeddings import embed
+from src.api.services.embeddings import embed, EmbeddingError
 
 ALLOWED_EXTENSIONS = {".txt", ".md", ".py", ".js", ".json", ".html", ".css", ".csv", ".xml", ".ini", ".yaml", ".yml"}
 MAX_UPLOAD_SIZE = 512 * 1024
@@ -10,6 +12,9 @@ MAX_UPLOAD_SIZE = 512 * 1024
 # Taille des passages, en caractères (~300 à 400 tokens).
 CHUNK_SIZE = 1500
 CHUNK_OVERLAP = 200
+
+# Passages joints automatiquement à chaque message.
+AUTO_SEARCH_RESULTS = 3
 
 
 class DocumentError(Exception):
@@ -66,3 +71,30 @@ async def ingest(filename: str, content: bytes) -> Dict[str, Any]:
 
     embeddings = await embed(chunks)
     return await database.insert_document(name, chunks, embeddings)
+
+
+# ─── Recherche ──────────────────────────────────────────────────────────────
+
+async def search(query: str, k: int) -> List[Dict[str, Any]]:
+    """Les k passages les plus proches de la requête, du plus au moins pertinent."""
+    [embedding] = await embed([query])
+    return await database.search_chunks(embedding, k)
+
+
+async def auto_search(query: str) -> List[Dict[str, Any]]:
+    """
+    Recherche automatique faite avant chaque réponse. Ne lève jamais : un
+    fournisseur d'embeddings ou une base indisponible ne doit pas bloquer le chat.
+    """
+    try:
+        candidates = await search(query, AUTO_SEARCH_RESULTS)
+    except (EmbeddingError, OSError, asyncpg.PostgresError):
+        return []
+    return [r for r in candidates if r["score"] >= RAG_AUTO_MIN_SCORE]
+
+
+def format_passages(results: List[Dict[str, Any]]) -> str:
+    return "\n\n".join(
+        f"[{i}] {r['source']} (score {r['score']:.2f})\n{r['content']}"
+        for i, r in enumerate(results, 1)
+    )
