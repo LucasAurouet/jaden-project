@@ -35,6 +35,7 @@ All settings come from `.env`, read in `config.py`, which is the single source o
 - `HOMN_KEY`: shared secret. The server checks it as `Authorization: Bearer` (`src/api/dependencies.py:verify_token`), and the client sends it.
 - `LLM_BASE_URL` / `LLM_API_KEY` / `LLM_MODEL`: any OpenAI-compatible provider (local llama-server, Mistral API…). The base URL has no `/v1`, which the code appends.
 - `EMBEDDING_BASE_URL` / `EMBEDDING_MODEL` / `EMBEDDING_DIM`: OpenAI-compatible `/v1/embeddings`. `EMBEDDING_DIM` is fixed in the `chunks` table, and startup fails on a mismatch, so changing models means reindexing.
+- `EMBEDDING_QUERY_PREFIX` / `EMBEDDING_PASSAGE_PREFIX`: prepended before embedding, for models trained with them (e5, nomic). Empty for bge-m3 and mistral-embed. Only the vector uses them (`content` stays raw), and changing the passage prefix means reindexing.
 - `RAG_MIN_SCORE`: minimum cosine similarity for a passage returned by `search_documents` (0 = no threshold, default 0.5). Score distributions depend on the embedding model, so calibrate it from the scores shown in results.
 - `RAG_AUTO_SEARCH` / `RAG_AUTO_MIN_SCORE`: automatic retrieval before every answer (default on, threshold 0.7, stricter than `RAG_MIN_SCORE` since no model judges relevance).
 - `RAG_HYBRID_SEARCH`: hybrid retrieval, vector + BM25 fused by RRF (default on). The thresholds above still apply to the cosine score, but `search_documents` also keeps BM25 hits below `RAG_MIN_SCORE`.

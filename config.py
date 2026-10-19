@@ -31,6 +31,12 @@ EMBEDDING_API_KEY: str = os.getenv("EMBEDDING_API_KEY", "")
 EMBEDDING_MODEL: str = os.getenv("EMBEDDING_MODEL", "")
 # Fixée à la création de la table : changer de modèle impose de réindexer.
 EMBEDDING_DIM: int = int(os.getenv("EMBEDDING_DIM", "1024"))
+# Préfixes ajoutés avant vectorisation, pour les modèles entraînés avec
+# (e5 : "query: " / "passage: ", nomic : "search_query: " / "search_document: ").
+# Vides pour bge-m3 et mistral-embed. Mettre les guillemets dans le .env pour
+# garder l'espace final. Changer le préfixe des passages impose de réindexer.
+EMBEDDING_QUERY_PREFIX: str = os.getenv("EMBEDDING_QUERY_PREFIX", "")
+EMBEDDING_PASSAGE_PREFIX: str = os.getenv("EMBEDDING_PASSAGE_PREFIX", "")
 # Similarité cosinus minimale d'un passage renvoyé par search_documents
 # (0 = pas de seuil). Dépend du modèle d'embeddings : à calibrer à l'aide des
 # scores affichés dans les résultats.

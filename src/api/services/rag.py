@@ -3,7 +3,7 @@ import asyncio
 import asyncpg
 from pathlib import Path
 from typing import Any, Dict, List
-from config import RAG_AUTO_MIN_SCORE, RAG_HYBRID_SEARCH
+from config import EMBEDDING_PASSAGE_PREFIX, EMBEDDING_QUERY_PREFIX, RAG_AUTO_MIN_SCORE, RAG_HYBRID_SEARCH
 from src.api.services import database
 from src.api.services.embeddings import embed, EmbeddingError
 
@@ -75,7 +75,8 @@ async def ingest(filename: str, content: bytes) -> Dict[str, Any]:
     if not chunks:
         raise DocumentError("Le fichier est vide.")
 
-    embeddings = await embed(chunks)
+    # Le préfixe ne sert qu'au vecteur : content (affichage, BM25) reste le texte brut.
+    embeddings = await embed([EMBEDDING_PASSAGE_PREFIX + chunk for chunk in chunks])
     return await database.insert_document(name, chunks, embeddings)
 
 
@@ -104,7 +105,7 @@ async def search(query: str, k: int) -> List[Dict[str, Any]]:
     identifiants, termes rares que les embeddings rapprochent mal). Chaque
     passage a son score cosinus (score) et, s'il a été trouvé par BM25, bm25.
     """
-    [embedding] = await embed([query])
+    [embedding] = await embed([EMBEDDING_QUERY_PREFIX + query])
     if not RAG_HYBRID_SEARCH:
         return await database.search_chunks(embedding, k)
     n = max(4 * k, MIN_CANDIDATES)
