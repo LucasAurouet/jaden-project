@@ -120,9 +120,60 @@ async def delete_document(document_id: int) -> bool:
 async def search_chunks(embedding: List[float], k: int) -> List[Dict[str, Any]]:
     """Les k passages les plus proches (distance cosinus), du plus au moins pertinent."""
     rows = await _pool.fetch("""
-        SELECT d.source, c.content, 1 - (c.embedding <=> $1) AS score
+        SELECT c.id, d.source, c.content, 1 - (c.embedding <=> $1) AS score
         FROM chunks c JOIN documents d ON d.id = c.document_id
         ORDER BY c.embedding <=> $1
         LIMIT $2
     """, embedding, k)
+    return [dict(row) for row in rows]
+
+
+# Paramètres usuels de BM25 : saturation de la fréquence d'un terme (k1) et
+# normalisation par la longueur du passage (b).
+BM25_K1 = 1.2
+BM25_B = 0.75
+
+
+async def search_chunks_bm25(query: str, embedding: List[float], k: int) -> List[Dict[str, Any]]:
+    """
+    Les k meilleurs passages selon BM25, calculé sur le tsvector des passages
+    (configuration french, comme dans la migration). Il suffit qu'un passage
+    contienne un des termes de la requête : l'IDF donne leur poids aux termes rares.
+    La longueur d'un passage est son nombre de lexèmes distincts (approximation).
+    Le score cosinus est aussi renvoyé, pour les seuils appliqués après fusion.
+    """
+    rows = await _pool.fetch("""
+        WITH terms AS (
+            SELECT unnest(tsvector_to_array(to_tsvector('french', $1))) AS lexeme
+        ),
+        matched AS (
+            -- plainto_tsquery relie les termes par & : on les relie par | (OU).
+            SELECT c.id, c.tsv FROM chunks c
+            WHERE c.tsv @@ replace(plainto_tsquery('french', $1)::text, ' & ', ' | ')::tsquery
+        ),
+        tf AS (
+            SELECT m.id, t.lexeme, cardinality(t.positions) AS freq, length(m.tsv) AS len
+            FROM matched m, unnest(m.tsv) t
+            WHERE t.lexeme IN (SELECT lexeme FROM terms)
+        ),
+        df AS (
+            SELECT lexeme, count(*) AS n FROM tf GROUP BY lexeme
+        ),
+        stats AS (
+            SELECT count(*) AS total, avg(length(tsv)) AS avg_len FROM chunks
+        ),
+        ranked AS (
+            SELECT tf.id, sum(
+                ln(1 + (stats.total - df.n + 0.5) / (df.n + 0.5))
+                * tf.freq * ($4 + 1) / (tf.freq + $4 * (1 - $5 + $5 * tf.len / stats.avg_len))
+            ) AS bm25
+            FROM tf JOIN df USING (lexeme) CROSS JOIN stats
+            GROUP BY tf.id
+            ORDER BY bm25 DESC
+            LIMIT $3
+        )
+        SELECT c.id, d.source, c.content, 1 - (c.embedding <=> $2) AS score, r.bm25
+        FROM ranked r JOIN chunks c ON c.id = r.id JOIN documents d ON d.id = c.document_id
+        ORDER BY r.bm25 DESC
+    """, query, embedding, k, BM25_K1, BM25_B)
     return [dict(row) for row in rows]

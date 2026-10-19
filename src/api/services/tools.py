@@ -17,10 +17,13 @@ async def search_documents(query: str, k: int = DEFAULT_SEARCH_RESULTS) -> str:
     candidates = await rag.search(query, k)
     if not candidates:
         return "Aucun document indexé."
-    results = [r for r in candidates if r["score"] >= RAG_MIN_SCORE]
+    # Un passage trouvé par mots-clés (BM25) est gardé même sous le seuil cosinus :
+    # c'est le cas typique d'un identifiant ou d'un nom propre que les embeddings ratent.
+    results = [r for r in candidates if r["score"] >= RAG_MIN_SCORE or r.get("bm25") is not None]
     if not results:
+        best = max(r["score"] for r in candidates)
         return (
-            f"Aucun passage suffisamment pertinent (meilleur score {candidates[0]['score']:.2f}, "
+            f"Aucun passage suffisamment pertinent (meilleur score {best:.2f}, "
             f"seuil {RAG_MIN_SCORE:.2f}). Reformule la requête ou réponds sans les documents."
         )
     return rag.format_passages(results)
@@ -33,7 +36,8 @@ TOOLS: Dict[str, Dict[str, Any]] = {
     "search_documents": {
         "function": search_documents,
         "description": (
-            "Recherche sémantique dans les documents fournis par l'utilisateur. "
+            "Recherche dans les documents fournis par l'utilisateur, par le sens "
+            "et par mots-clés (noms propres, identifiants, termes exacts). "
             "Renvoie au plus k passages pertinents avec leur source : "
             "peut en renvoyer moins, voire aucun, si rien n'est assez proche."
         ),

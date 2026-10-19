@@ -1,8 +1,9 @@
 import os
+import asyncio
 import asyncpg
 from pathlib import Path
 from typing import Any, Dict, List
-from config import RAG_AUTO_MIN_SCORE
+from config import RAG_AUTO_MIN_SCORE, RAG_HYBRID_SEARCH
 from src.api.services import database
 from src.api.services.embeddings import embed, EmbeddingError
 
@@ -15,6 +16,11 @@ CHUNK_OVERLAP = 200
 
 # Passages joints automatiquement à chaque message.
 AUTO_SEARCH_RESULTS = 3
+
+# Recherche hybride : nombre de candidats demandés à chaque recherche (vectorielle
+# et BM25) avant fusion, et constante de la Reciprocal Rank Fusion (60 d'usage).
+MIN_CANDIDATES = 20
+RRF_K = 60
 
 
 class DocumentError(Exception):
@@ -75,26 +81,58 @@ async def ingest(filename: str, content: bytes) -> Dict[str, Any]:
 
 # ─── Recherche ──────────────────────────────────────────────────────────────
 
+def _fuse(*rankings: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+    """
+    Reciprocal Rank Fusion : chaque classement donne 1 / (RRF_K + rang) à ses
+    passages. Seuls les rangs comptent, pas les scores (cosinus et BM25 ne sont
+    pas comparables). Un passage trouvé par les deux recherches remonte en tête.
+    """
+    fused: Dict[int, Dict[str, Any]] = {}
+    for ranking in rankings:
+        for rank, result in enumerate(ranking, 1):
+            entry = fused.setdefault(result["id"], {"bm25": None, **result, "rrf": 0.0})
+            entry["rrf"] += 1 / (RRF_K + rank)
+            if result.get("bm25") is not None:
+                entry["bm25"] = result["bm25"]
+    return sorted(fused.values(), key=lambda r: r["rrf"], reverse=True)
+
+
 async def search(query: str, k: int) -> List[Dict[str, Any]]:
-    """Les k passages les plus proches de la requête, du plus au moins pertinent."""
+    """
+    Les k passages les plus pertinents, du plus au moins pertinent. En mode
+    hybride, fusionne la recherche vectorielle et BM25 (mots-clés : noms propres,
+    identifiants, termes rares que les embeddings rapprochent mal). Chaque
+    passage a son score cosinus (score) et, s'il a été trouvé par BM25, bm25.
+    """
     [embedding] = await embed([query])
-    return await database.search_chunks(embedding, k)
+    if not RAG_HYBRID_SEARCH:
+        return await database.search_chunks(embedding, k)
+    n = max(4 * k, MIN_CANDIDATES)
+    vector, lexical = await asyncio.gather(
+        database.search_chunks(embedding, n),
+        database.search_chunks_bm25(query, embedding, n),
+    )
+    return _fuse(vector, lexical)[:k]
 
 
 async def auto_search(query: str) -> List[Dict[str, Any]]:
     """
     Recherche automatique faite avant chaque réponse. Ne lève jamais : un
     fournisseur d'embeddings ou une base indisponible ne doit pas bloquer le chat.
+    Faute de modèle pour juger de la pertinence, seul le score cosinus compte :
+    BM25 élargit les candidats et influe sur leur ordre, sans exempter du seuil.
     """
     try:
-        candidates = await search(query, AUTO_SEARCH_RESULTS)
+        candidates = await search(query, MIN_CANDIDATES)
     except (EmbeddingError, OSError, asyncpg.PostgresError):
         return []
-    return [r for r in candidates if r["score"] >= RAG_AUTO_MIN_SCORE]
+    return [r for r in candidates if r["score"] >= RAG_AUTO_MIN_SCORE][:AUTO_SEARCH_RESULTS]
 
 
 def format_passages(results: List[Dict[str, Any]]) -> str:
     return "\n\n".join(
-        f"[{i}] {r['source']} (score {r['score']:.2f})\n{r['content']}"
+        f"[{i}] {r['source']} (score {r['score']:.2f}"
+        + (f", BM25 {r['bm25']:.1f}" if r.get("bm25") is not None else "")
+        + f")\n{r['content']}"
         for i, r in enumerate(results, 1)
     )
