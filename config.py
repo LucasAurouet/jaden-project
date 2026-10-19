@@ -35,6 +35,11 @@ EMBEDDING_DIM: int = int(os.getenv("EMBEDDING_DIM", "1024"))
 # (0 = pas de seuil). Dépend du modèle d'embeddings : à calibrer à l'aide des
 # scores affichés dans les résultats.
 RAG_MIN_SCORE: float = float(os.getenv("RAG_MIN_SCORE", "0.5"))
+# Recherche automatique à chaque message : les passages qui dépassent
+# RAG_AUTO_MIN_SCORE (plus strict que RAG_MIN_SCORE, faute de jugement du
+# modèle) sont joints à la question. Le tool search_documents reste disponible.
+RAG_AUTO_SEARCH: bool = os.getenv("RAG_AUTO_SEARCH", "true").lower() == "true"
+RAG_AUTO_MIN_SCORE: float = float(os.getenv("RAG_AUTO_MIN_SCORE", "0.7"))
 
 # Postgres avec l'extension pgvector : historique et documents.
 DATABASE_URL: str = os.getenv("DATABASE_URL", "postgresql://homn:homn@127.0.0.1:5432/homn")

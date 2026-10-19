@@ -1,14 +1,16 @@
 import json
 from typing import Any, AsyncIterator, Iterator, List, Dict
-from config import CONTEXT_TOKEN_BUDGET
+from config import CONTEXT_TOKEN_BUDGET, RAG_AUTO_SEARCH
 from src.api.services.database import save_exchange, get_chat_context, save_summary
 from src.api.services.inference import stream_chat_completion, complete_chat, InferenceError
-from src.api.services.tools import TOOL_SCHEMAS, execute_tool
+from src.api.services.tools import TOOL_SCHEMAS, execute_tool, auto_search, format_passages
 
 SYSTEM_PROMPT = (
     "Tu es Homn, un assistant personnel. "
     "L'utilisateur peut t'avoir fourni des documents : utilise le tool search_documents "
-    "dès que la question peut s'y rapporter, et cite la source des passages utilisés."
+    "dès que la question peut s'y rapporter, et cite la source des passages utilisés. "
+    "Des passages trouvés automatiquement peuvent être joints au message de l'utilisateur : "
+    "ignore-les s'ils sont hors sujet, et utilise search_documents s'ils ne suffisent pas."
 )
 MAX_TOOL_ITERATIONS = 3
 
@@ -125,6 +127,19 @@ class ChatService:
             else:
                 yield _sse(event)
 
+        # Les passages sont joints au message plutôt qu'au prompt système : le début
+        # du prompt reste identique d'un tour à l'autre (cache de llama-server).
+        # Ils ne sont pas enregistrés : seul le prompt brut l'est.
+        question = prompt
+        if RAG_AUTO_SEARCH:
+            passages = await auto_search(prompt)
+            if passages:
+                yield _sse({"type": "status", "message": f"{len(passages)} passage(s) trouvé(s) dans les documents"})
+                question += (
+                    "\n\n---\nPassages des documents trouvés automatiquement "
+                    f"(peut-être hors sujet) :\n\n{format_passages(passages)}"
+                )
+
         # L'historique en base ne contient que des tours user/assistant :
         # le message système est ajouté à chaque appel. Le résumé y est fusionné,
         # car certains templates refusent un second message système.
@@ -134,7 +149,7 @@ class ChatService:
         messages = (
             [{"role": "system", "content": system}]
             + [{"role": message["role"], "content": message["content"]} for message in history]
-            + [{"role": "user", "content": prompt}]
+            + [{"role": "user", "content": question}]
         )
 
         answer = ""
