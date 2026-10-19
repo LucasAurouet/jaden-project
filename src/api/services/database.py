@@ -91,10 +91,19 @@ async def save_summary(session_id: str, summary: str, upto: int):
 
 # ─── Documents (RAG) ────────────────────────────────────────────────────────
 
-async def insert_document(source: str, chunks: List[str], embeddings: List[List[float]]) -> Dict[str, Any]:
+async def find_document_by_hash(sha256: str) -> Dict[str, Any] | None:
+    row = await _pool.fetchrow("SELECT id, source FROM documents WHERE sha256 = $1", sha256)
+    return dict(row) if row else None
+
+
+async def insert_document(
+    source: str, sha256: str, chunks: List[str], embeddings: List[List[float]]
+) -> Dict[str, Any]:
+    """Lève asyncpg.UniqueViolationError si un document de même empreinte existe."""
     async with _pool.acquire() as conn, conn.transaction():
         row = await conn.fetchrow(
-            "INSERT INTO documents (source) VALUES ($1) RETURNING id, source, created_at", source
+            "INSERT INTO documents (source, sha256) VALUES ($1, $2) RETURNING id, source, created_at",
+            source, sha256,
         )
         await conn.executemany(
             "INSERT INTO chunks (document_id, position, content, embedding) VALUES ($1, $2, $3, $4)",

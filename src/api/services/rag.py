@@ -1,6 +1,7 @@
 import os
 import asyncio
 import asyncpg
+import hashlib
 from pathlib import Path
 from typing import Any, Dict, List
 from config import EMBEDDING_PASSAGE_PREFIX, EMBEDDING_QUERY_PREFIX, RAG_AUTO_MIN_SCORE, RAG_HYBRID_SEARCH
@@ -25,6 +26,10 @@ RRF_K = 60
 
 class DocumentError(Exception):
     """Document refusé (format, taille, contenu)."""
+
+
+class DuplicateDocument(DocumentError):
+    """Fichier au contenu identique à un document déjà indexé."""
 
 
 def chunk_text(text: str) -> List[str]:
@@ -66,6 +71,13 @@ async def ingest(filename: str, content: bytes) -> Dict[str, Any]:
     if len(content) > MAX_UPLOAD_SIZE:
         raise DocumentError(f"Fichier trop volumineux (max {MAX_UPLOAD_SIZE // 1024} Ko).")
 
+    # Vérifié avant les embeddings, pour ne pas les calculer pour rien. Seul le
+    # contenu compte : deux fichiers de même nom mais différents sont gardés.
+    sha256 = hashlib.sha256(content).hexdigest()
+    existing = await database.find_document_by_hash(sha256)
+    if existing:
+        raise DuplicateDocument(f"Ce fichier est déjà indexé (sous le nom {existing['source']}).")
+
     try:
         text = content.decode("utf-8")
     except UnicodeDecodeError:
@@ -77,7 +89,11 @@ async def ingest(filename: str, content: bytes) -> Dict[str, Any]:
 
     # Le préfixe ne sert qu'au vecteur : content (affichage, BM25) reste le texte brut.
     embeddings = await embed([EMBEDDING_PASSAGE_PREFIX + chunk for chunk in chunks])
-    return await database.insert_document(name, chunks, embeddings)
+    try:
+        return await database.insert_document(name, sha256, chunks, embeddings)
+    except asyncpg.UniqueViolationError:
+        # Même fichier envoyé deux fois en même temps : l'index unique tranche.
+        raise DuplicateDocument("Ce fichier est déjà indexé.")
 
 
 # ─── Recherche ──────────────────────────────────────────────────────────────

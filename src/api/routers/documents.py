@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
 from typing import Any, Dict, List
 from src.api.dependencies import verify_token
 from src.api.services import database, rag
-from src.api.services.rag import DocumentError
+from src.api.services.rag import DocumentError, DuplicateDocument
 from src.api.services.embeddings import EmbeddingError
 
 router = APIRouter(tags=["Documents (RAG)"], dependencies=[Depends(verify_token)])
@@ -15,6 +15,8 @@ async def upload_document(file: UploadFile = File(...)) -> Dict[str, Any]:
     content = await file.read(rag.MAX_UPLOAD_SIZE + 1)
     try:
         return await rag.ingest(file.filename, content)
+    except DuplicateDocument as e:
+        raise HTTPException(status_code=409, detail=str(e))
     except DocumentError as e:
         raise HTTPException(status_code=400, detail=str(e))
     except EmbeddingError as e:
