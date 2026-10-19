@@ -35,6 +35,7 @@ All settings come from `.env`, read in `config.py`, which is the single source o
 - `HOMN_KEY`: shared secret. The server checks it as `Authorization: Bearer` (`src/api/dependencies.py:verify_token`), and the client sends it.
 - `LLM_BASE_URL` / `LLM_API_KEY` / `LLM_MODEL`: any OpenAI-compatible provider (local llama-server, Mistral API…). The base URL has no `/v1`, which the code appends.
 - `EMBEDDING_BASE_URL` / `EMBEDDING_MODEL` / `EMBEDDING_DIM`: OpenAI-compatible `/v1/embeddings`. `EMBEDDING_DIM` is fixed in the `chunks` table, and startup fails on a mismatch, so changing models means reindexing.
+- `RAG_MIN_SCORE`: minimum cosine similarity for a passage returned by `search_documents` (0 = no threshold, default 0.5). Score distributions depend on the embedding model, so calibrate it from the scores shown in results.
 - `CONTEXT_TOKEN_BUDGET`: estimated token budget (4 chars/token) for the session history sent to the LLM. Above it, old exchanges are summarized (about half of `n_ctx` is a good value).
 - `SERVER_IP` / `SERVER_PORT`: where the client finds the server. `SERVER_PORT` is also the server's listen port.
 - `LLAMA_*` keys: read only by `scripts/start-llama.ps1`. That script derives the llama-server ports from `LLM_BASE_URL` / `EMBEDDING_BASE_URL`, which must be loopback.

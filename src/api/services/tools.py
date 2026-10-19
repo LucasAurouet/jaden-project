@@ -1,6 +1,7 @@
 import json
 import asyncpg
 from typing import Any, Awaitable, Callable, Dict, List
+from config import RAG_MIN_SCORE
 from src.api.services import database
 from src.api.services.embeddings import embed, EmbeddingError
 
@@ -14,9 +15,15 @@ MAX_SEARCH_RESULTS = 10
 async def search_documents(query: str, k: int = DEFAULT_SEARCH_RESULTS) -> str:
     k = max(1, min(int(k), MAX_SEARCH_RESULTS))
     [embedding] = await embed([query])
-    results = await database.search_chunks(embedding, k)
-    if not results:
+    candidates = await database.search_chunks(embedding, k)
+    if not candidates:
         return "Aucun document indexé."
+    results = [r for r in candidates if r["score"] >= RAG_MIN_SCORE]
+    if not results:
+        return (
+            f"Aucun passage suffisamment pertinent (meilleur score {candidates[0]['score']:.2f}, "
+            f"seuil {RAG_MIN_SCORE:.2f}). Reformule la requête ou réponds sans les documents."
+        )
     return "\n\n".join(
         f"[{i}] {r['source']} (score {r['score']:.2f})\n{r['content']}"
         for i, r in enumerate(results, 1)
@@ -31,7 +38,8 @@ TOOLS: Dict[str, Dict[str, Any]] = {
         "function": search_documents,
         "description": (
             "Recherche sémantique dans les documents fournis par l'utilisateur. "
-            "Renvoie les passages les plus pertinents avec leur source."
+            "Renvoie au plus k passages pertinents avec leur source : "
+            "peut en renvoyer moins, voire aucun, si rien n'est assez proche."
         ),
         "parameters": {
             "type": "object",

@@ -31,6 +31,10 @@ EMBEDDING_API_KEY: str = os.getenv("EMBEDDING_API_KEY", "")
 EMBEDDING_MODEL: str = os.getenv("EMBEDDING_MODEL", "")
 # Fixée à la création de la table : changer de modèle impose de réindexer.
 EMBEDDING_DIM: int = int(os.getenv("EMBEDDING_DIM", "1024"))
+# Similarité cosinus minimale d'un passage renvoyé par search_documents
+# (0 = pas de seuil). Dépend du modèle d'embeddings : à calibrer à l'aide des
+# scores affichés dans les résultats.
+RAG_MIN_SCORE: float = float(os.getenv("RAG_MIN_SCORE", "0.5"))
 
 # Postgres avec l'extension pgvector : historique et documents.
 DATABASE_URL: str = os.getenv("DATABASE_URL", "postgresql://homn:homn@127.0.0.1:5432/homn")
