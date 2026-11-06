@@ -1,7 +1,8 @@
 import httpx
+from urllib.parse import quote
 from typing import Any, Dict, List
-from config import SERVER_IP, SERVER_PORT, HOMN_KEY, LLM_TIMEOUT
-from src.schemas import ComputeRequest
+from config import SERVER_IP, SERVER_PORT, LLM_TIMEOUT
+from src.schemas import ComputeRequest, LoginRequest
 
 SERVER_URL = f"http://{SERVER_IP}:{SERVER_PORT}"
 
@@ -16,7 +17,6 @@ async def start_client():
     global _client
     _client = httpx.AsyncClient(
         base_url=SERVER_URL,
-        headers={"Authorization": f"Bearer {HOMN_KEY}"},
         timeout=httpx.Timeout(LLM_TIMEOUT + 10, connect=5.0),
     )
 
@@ -34,11 +34,14 @@ class ServerError(Exception):
         self.status = status
 
 
-async def _request(method: str, path: str, stream: bool = False, **kwargs) -> httpx.Response:
+async def _request(method: str, path: str, token: str | None, stream: bool = False, **kwargs) -> httpx.Response:
     """
-    Requête authentifiée vers le serveur ; lève ServerError si elle n'aboutit pas.
+    Requête vers le serveur, avec le jeton de connexion de l'utilisateur ; lève
+    ServerError si elle n'aboutit pas (un 401 signifie qu'il faut se reconnecter).
     Avec stream=True, le corps reste à lire et la réponse à fermer par l'appelant.
     """
+    if token is not None:
+        kwargs["headers"] = {**kwargs.get("headers", {}), "Authorization": f"Bearer {token}"}
     request = _client.build_request(method, path, **kwargs)
     try:
         response = await _client.send(request, stream=stream)
@@ -50,9 +53,6 @@ async def _request(method: str, path: str, stream: bool = False, **kwargs) -> ht
     if response.is_error:
         await response.aread()
         await response.aclose()
-    if response.status_code == 401:
-        raise ServerError(502, "Clé Homn refusée par le serveur (vérifiez HOMN_KEY dans .env).")
-    if response.is_error:
         try:
             body = response.json()
             detail = body.get("detail") or body["error"]["message"]
@@ -62,32 +62,64 @@ async def _request(method: str, path: str, stream: bool = False, **kwargs) -> ht
     return response
 
 
-async def compute(session_id: str, prompt: str) -> httpx.Response:
+# ─── Authentification ───────────────────────────────────────────────────────
+
+async def login(username: str, password: str) -> Dict[str, Any]:
+    payload = LoginRequest(username=username, password=password).model_dump()
+    return (await _request("POST", "/v1/auth/login", None, json=payload)).json()
+
+
+async def logout(token: str):
+    await _request("POST", "/v1/auth/logout", token)
+
+
+async def me(token: str) -> Dict[str, Any]:
+    return (await _request("GET", "/v1/auth/me", token)).json()
+
+
+# ─── Conversations ──────────────────────────────────────────────────────────
+
+async def compute(token: str, session_id: str, prompt: str) -> httpx.Response:
     """Ouvre le flux SSE de l'agent du serveur (voir ChatService.stream_compute)."""
     payload = ComputeRequest(session_id=session_id, prompt=prompt).model_dump()
-    return await _request("POST", "/v1/compute", stream=True, json=payload)
+    return await _request("POST", "/v1/compute", token, stream=True, json=payload)
 
 
-async def upload_document(filename: str, content: bytes, content_type: str | None) -> Dict[str, Any]:
+async def list_sessions(token: str) -> List[Dict[str, Any]]:
+    return (await _request("GET", "/v1/sessions", token)).json()
+
+
+async def get_messages(token: str, session_id: str) -> List[Dict[str, Any]]:
+    return (await _request("GET", f"/v1/sessions/{quote(session_id, safe='')}/messages", token)).json()
+
+
+async def delete_session(token: str, session_id: str):
+    await _request("DELETE", f"/v1/sessions/{quote(session_id, safe='')}", token)
+
+
+# ─── Documents ──────────────────────────────────────────────────────────────
+
+async def upload_document(token: str, filename: str, content: bytes, content_type: str | None, shared: bool) -> Dict[str, Any]:
     response = await _request(
-        "POST", "/v1/documents",
+        "POST", "/v1/documents", token,
         files={"file": (filename, content, content_type or "application/octet-stream")},
+        data={"shared": "true" if shared else "false"},
         timeout=UPLOAD_TIMEOUT,
     )
     return response.json()
 
 
-async def list_documents() -> List[Dict[str, Any]]:
-    return (await _request("GET", "/v1/documents")).json()
+async def list_documents(token: str) -> List[Dict[str, Any]]:
+    return (await _request("GET", "/v1/documents", token)).json()
 
 
-async def delete_document(document_id: int):
-    await _request("DELETE", f"/v1/documents/{document_id}")
+async def delete_document(token: str, document_id: int):
+    await _request("DELETE", f"/v1/documents/{document_id}", token)
 
 
-async def get_server_metrics() -> Dict[str, Any]:
+async def get_server_metrics(token: str) -> Dict[str, Any]:
     try:
-        response = await _client.get("/v1/metrics/all", timeout=2.0)
+        response = await _client.get("/v1/metrics/all", headers={"Authorization": f"Bearer {token}"}, timeout=2.0)
         if response.status_code == 200:
             return response.json()
     except httpx.HTTPError:

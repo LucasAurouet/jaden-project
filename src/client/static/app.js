@@ -1,7 +1,7 @@
-const SESSION_ID = 'session-' + Date.now() + '-' + Math.random().toString(36).substring(2, 11);
 const API_URL = "/api/compute";
 const METRICS_URL = "/api/metrics";
 const DOCUMENTS_URL = "/api/documents";
+const SESSIONS_URL = "/api/sessions";
 
 const chatBox = document.getElementById("chat-box");
 const userInput = document.getElementById("user-input");
@@ -9,7 +9,14 @@ const promptForm = document.getElementById("prompt-form");
 const sendBtn = document.getElementById("send-btn");
 const documentList = document.getElementById("document-list");
 const fileInput = document.getElementById("file-input");
+const sharedInput = document.getElementById("shared-input");
 const refreshDocumentsBtn = document.getElementById("refresh-documents-btn");
+const sessionList = document.getElementById("session-list");
+const loginScreen = document.getElementById("login");
+const loginForm = document.getElementById("login-form");
+
+// Écran d'accueil d'une conversation vide, recopié à chaque nouvelle discussion.
+const bootTemplate = document.getElementById("boot").cloneNode(true);
 
 const HISTORY_SIZE = 40;
 const history = {
@@ -19,18 +26,26 @@ const history = {
     tokens: new Array(HISTORY_SIZE).fill(null),
 };
 
+let currentUser = null;
+// Id de la conversation affichée : généré ici, la session n'existe côté serveur
+// qu'après le premier échange. Il est gardé dans l'URL (#id) pour survivre à un F5.
+let sessionId = null;
+let sessionSaved = false;
 let exchangeCount = 0;
+let monitorStarted = false;
 
 marked.setOptions({ breaks: true });
 
-document.addEventListener('DOMContentLoaded', () => {
-    initCharts();
-    updateMetrics();
-    setInterval(updateMetrics, 2000);
+document.addEventListener('DOMContentLoaded', async () => {
     tickClock();
     setInterval(tickClock, 1000);
-    fetchDocuments();
-    userInput.focus();
+
+    const response = await fetch("/api/me").catch(() => null);
+    if (response?.ok) {
+        await startApp(await response.json());
+    } else {
+        showLogin();
+    }
 });
 
 
@@ -54,10 +69,95 @@ refreshDocumentsBtn.addEventListener("click", async () => {
     refreshDocumentsBtn.disabled = false;
 });
 
+document.getElementById("new-session-btn").addEventListener("click", () => {
+    newSession();
+    userInput.focus();
+});
+
+document.getElementById("logout-btn").addEventListener("click", async () => {
+    await fetch("/api/logout", { method: "POST" }).catch(() => null);
+    showLogin();
+});
+
+loginForm.addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const error = document.getElementById("login-error");
+    const button = document.getElementById("login-btn");
+    error.textContent = "";
+    button.disabled = true;
+    try {
+        const response = await fetch("/api/login", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+                username: document.getElementById("login-username").value,
+                password: document.getElementById("login-password").value,
+            }),
+        });
+        if (!response.ok) {
+            error.textContent = await errorMessage(response);
+            return;
+        }
+        document.getElementById("login-password").value = "";
+        await startApp(await response.json());
+    } catch (err) {
+        error.textContent = "Client injoignable.";
+    } finally {
+        button.disabled = false;
+    }
+});
+
+
+// ─── SESSION UTILISATEUR ────────────────────────────────────────────────────
+async function startApp(user) {
+    currentUser = user;
+    loginScreen.hidden = true;
+    document.getElementById("user-box").hidden = false;
+    document.getElementById("user-name").textContent = user.username;
+    // Seul un admin peut ajouter un document partagé (vérifié aussi par le serveur).
+    document.getElementById("shared-option").hidden = !user.is_admin;
+
+    if (!monitorStarted) {
+        monitorStarted = true;
+        initCharts();
+        setInterval(updateMetrics, 2000);
+    }
+    updateMetrics();
+    fetchDocuments();
+    await fetchSessions();
+
+    const fromUrl = decodeURIComponent(location.hash.slice(1));
+    if (fromUrl) {
+        await openSession(fromUrl);
+    } else {
+        newSession();
+    }
+    userInput.focus();
+}
+
+function showLogin() {
+    currentUser = null;
+    document.getElementById("user-box").hidden = true;
+    sessionList.replaceChildren();
+    documentList.replaceChildren();
+    resetChat();
+    loginScreen.hidden = false;
+    document.getElementById("login-username").focus();
+}
+
+// fetch vers le client ; un 401 (session expirée ou révoquée) renvoie à la connexion.
+async function apiFetch(url, options) {
+    const response = await fetch(url, options);
+    if (response.status === 401 && currentUser) {
+        showLogin();
+        throw new Error("Session expirée : reconnectez-vous.");
+    }
+    return response;
+}
+
 // ─── UTILITAIRES ────────────────────────────────────────────────────────────
 const pad = (n) => String(n).padStart(2, '0');
-const timestamp = () => {
-    const d = new Date();
+const timestamp = (d = new Date()) => {
     return `${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
 };
 
@@ -87,9 +187,10 @@ async function uploadDocument(file) {
 
     const formData = new FormData();
     formData.append("file", file);
+    formData.append("shared", sharedInput.checked && currentUser?.is_admin ? "true" : "false");
 
     try {
-        const response = await fetch(DOCUMENTS_URL, { method: "POST", body: formData });
+        const response = await apiFetch(DOCUMENTS_URL, { method: "POST", body: formData });
 
         if (response.ok) {
             const result = await response.json();
@@ -99,7 +200,7 @@ async function uploadDocument(file) {
             setStatus("error", `✖ ${await errorMessage(response)}`);
         }
     } catch (error) {
-        setStatus("error", "✖ Client local hors ligne");
+        setStatus("error", `✖ ${error.message}`);
         console.error("Erreur d'upload :", error);
     } finally {
         fileInput.disabled = false;
@@ -109,7 +210,7 @@ async function uploadDocument(file) {
 
 async function fetchDocuments() {
     try {
-        const response = await fetch(DOCUMENTS_URL);
+        const response = await apiFetch(DOCUMENTS_URL);
         if (!response.ok) throw new Error(await errorMessage(response));
         renderDocuments(await response.json());
     } catch (error) {
@@ -128,7 +229,7 @@ async function deleteDocument(doc, button) {
 
     button.disabled = true;
     try {
-        const response = await fetch(`${DOCUMENTS_URL}/${doc.id}`, { method: "DELETE" });
+        const response = await apiFetch(`${DOCUMENTS_URL}/${doc.id}`, { method: "DELETE" });
         if (!response.ok && response.status !== 404) throw new Error(await errorMessage(response));
     } catch (error) {
         alert(`Suppression impossible : ${error.message}`);
@@ -160,16 +261,154 @@ function renderDocuments(documents) {
         chunks.textContent = `${doc.chunks} pass.`;
         chunks.title = `${doc.chunks} passage${doc.chunks > 1 ? 's' : ''} indexé${doc.chunks > 1 ? 's' : ''}`;
 
+        li.append(name);
+        if (doc.shared) {
+            const badge = document.createElement("span");
+            badge.className = "document-shared";
+            badge.textContent = "PARTAGÉ";
+            badge.title = "Document partagé, visible de tous les utilisateurs";
+            li.append(badge);
+        }
+        li.append(chunks);
+
+        // Les documents partagés ne sont retirés que par un admin.
+        if (!doc.shared || currentUser?.is_admin) {
+            const remove = document.createElement("button");
+            remove.className = "document-delete";
+            remove.textContent = "✕";
+            remove.title = "Retirer ce document";
+            remove.setAttribute("aria-label", `Retirer ${doc.source}`);
+            remove.addEventListener("click", () => deleteDocument(doc, remove));
+            li.append(remove);
+        }
+        return li;
+    }));
+}
+
+
+// ─── CONVERSATIONS ──────────────────────────────────────────────────────────
+// crypto.randomUUID n'existe qu'en contexte sécurisé (HTTPS ou localhost).
+function newId() {
+    if (crypto.randomUUID) return crypto.randomUUID();
+    return Array.from(crypto.getRandomValues(new Uint8Array(16)), b => b.toString(16).padStart(2, "0")).join("");
+}
+
+function setExchangeCount(count) {
+    exchangeCount = count;
+    document.getElementById("msg-counter").textContent =
+        `${pad(exchangeCount)} ÉCHANGE${exchangeCount > 1 ? 'S' : ''}`;
+}
+
+function resetChat() {
+    chatBox.replaceChildren(bootTemplate.cloneNode(true));
+    setExchangeCount(0);
+    // L'écran d'accueil recopié reprend l'état actuel de la liaison.
+    setLinkState(document.getElementById("link-status").dataset.state,
+                 document.getElementById("link-text").textContent);
+}
+
+function newSession() {
+    sessionId = newId();
+    sessionSaved = false;
+    window.history.replaceState(null, "", location.pathname);
+    resetChat();
+    highlightSession();
+}
+
+async function openSession(id) {
+    try {
+        const response = await apiFetch(`${SESSIONS_URL}/${encodeURIComponent(id)}/messages`);
+        if (response.status === 404) {
+            newSession();
+            return;
+        }
+        if (!response.ok) throw new Error(await errorMessage(response));
+        const messages = await response.json();
+
+        sessionId = id;
+        sessionSaved = true;
+        window.history.replaceState(null, "", `#${encodeURIComponent(id)}`);
+        resetChat();
+        for (const message of messages) {
+            appendMessage(message.content, message.role, new Date(message.created_at));
+        }
+        setExchangeCount(messages.filter(m => m.role === "user").length);
+        highlightSession();
+    } catch (error) {
+        appendMessage(`Impossible d'ouvrir la conversation : ${error.message}`, "error");
+    }
+}
+
+async function fetchSessions() {
+    try {
+        const response = await apiFetch(SESSIONS_URL);
+        if (!response.ok) throw new Error(await errorMessage(response));
+        renderSessions(await response.json());
+    } catch (error) {
+        console.error("Impossible de récupérer les conversations :", error);
+        const li = document.createElement("li");
+        li.className = "documents-error";
+        li.textContent = `✖ ${error.message}`;
+        sessionList.replaceChildren(li);
+    }
+}
+
+async function deleteSession(session, button) {
+    if (!confirm(`Supprimer la conversation « ${session.title} » ?`)) return;
+
+    button.disabled = true;
+    try {
+        const response = await apiFetch(`${SESSIONS_URL}/${encodeURIComponent(session.id)}`, { method: "DELETE" });
+        if (!response.ok && response.status !== 404) throw new Error(await errorMessage(response));
+        if (session.id === sessionId) newSession();
+    } catch (error) {
+        alert(`Suppression impossible : ${error.message}`);
+    }
+    await fetchSessions();
+}
+
+function renderSessions(sessions) {
+    if (sessions.length === 0) {
+        const li = document.createElement("li");
+        li.className = "documents-empty";
+        li.textContent = "Aucune conversation";
+        sessionList.replaceChildren(li);
+        return;
+    }
+
+    sessionList.replaceChildren(...sessions.map(session => {
+        const li = document.createElement("li");
+        li.className = "document-item session-item";
+        li.dataset.id = session.id;
+        li.addEventListener("click", () => {
+            if (session.id !== sessionId) openSession(session.id);
+        });
+
+        const name = document.createElement("span");
+        name.className = "document-name";
+        name.title = session.title;
+        name.textContent = session.title;
+
         const remove = document.createElement("button");
         remove.className = "document-delete";
         remove.textContent = "✕";
-        remove.title = "Retirer ce document";
-        remove.setAttribute("aria-label", `Retirer ${doc.source}`);
-        remove.addEventListener("click", () => deleteDocument(doc, remove));
+        remove.title = "Supprimer cette conversation";
+        remove.setAttribute("aria-label", `Supprimer ${session.title}`);
+        remove.addEventListener("click", (e) => {
+            e.stopPropagation();
+            deleteSession(session, remove);
+        });
 
-        li.append(name, chunks, remove);
+        li.append(name, remove);
         return li;
     }));
+    highlightSession();
+}
+
+function highlightSession() {
+    for (const li of sessionList.querySelectorAll(".session-item")) {
+        li.setAttribute("aria-current", li.dataset.id === sessionId ? "true" : "false");
+    }
 }
 
 
@@ -185,12 +424,12 @@ async function sendMessage() {
     const reply = createStreamingReply();
 
     try {
-        const response = await fetch(API_URL, {
+        const response = await apiFetch(API_URL, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
                 prompt: text,
-                session_id: SESSION_ID
+                session_id: sessionId
             })
         });
 
@@ -211,9 +450,13 @@ async function sendMessage() {
                 return;
             } else if (event.type === "done") {
                 reply.finish();
-                exchangeCount++;
-                document.getElementById("msg-counter").textContent =
-                    `${pad(exchangeCount)} ÉCHANGE${exchangeCount > 1 ? 'S' : ''}`;
+                setExchangeCount(exchangeCount + 1);
+                // Session créée par ce premier échange : elle entre dans l'URL et la liste.
+                if (!sessionSaved) {
+                    sessionSaved = true;
+                    window.history.replaceState(null, "", `#${encodeURIComponent(sessionId)}`);
+                }
+                fetchSessions();
                 return;
             }
         }
@@ -221,7 +464,7 @@ async function sendMessage() {
         reply.fail("Flux interrompu avant la fin de la réponse.");
 
     } catch (error) {
-        reply.fail(`Client local injoignable (${error.message}).`);
+        reply.fail(error.message);
     } finally {
         sendBtn.disabled = false;
         userInput.focus();
@@ -300,7 +543,7 @@ function createStreamingReply() {
 
 const SENDER_LABEL = { user: "OPÉRATEUR", assistant: "HOMN", error: "SYSTÈME // ERREUR" };
 
-function createMessage(sender) {
+function createMessage(sender, date = new Date()) {
     document.getElementById("boot")?.remove();
 
     const msg = document.createElement("article");
@@ -313,7 +556,7 @@ function createMessage(sender) {
     who.textContent = SENDER_LABEL[sender];
     const time = document.createElement("span");
     time.className = "msg__time";
-    time.textContent = timestamp();
+    time.textContent = timestamp(date);
     meta.append(who, time);
 
     const body = document.createElement("div");
@@ -324,8 +567,8 @@ function createMessage(sender) {
     return { msg, body };
 }
 
-function appendMessage(text, sender) {
-    const { msg, body } = createMessage(sender);
+function appendMessage(text, sender, date) {
+    const { msg, body } = createMessage(sender, date);
 
     if (sender === "assistant") {
         body.innerHTML = DOMPurify.sanitize(marked.parse(text));
@@ -408,9 +651,10 @@ function formatUptime(seconds) {
 }
 
 async function updateMetrics() {
+    if (!currentUser) return;
     let data;
     try {
-        const response = await fetch(METRICS_URL);
+        const response = await apiFetch(METRICS_URL);
         if (!response.ok) throw new Error(`HTTP ${response.status}`);
         data = await response.json();
     } catch (error) {

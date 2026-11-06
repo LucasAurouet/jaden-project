@@ -8,3 +8,4 @@ nvidia-ml-py==13.610.43
 asyncpg==0.30.0
 pgvector==0.4.1
 alembic==1.20.0
+argon2-cffi==25.1.0

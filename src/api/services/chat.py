@@ -1,7 +1,7 @@
 import json
 from typing import Any, AsyncIterator, Iterator, List, Dict
 from config import CONTEXT_TOKEN_BUDGET, RAG_AUTO_SEARCH
-from src.api.services.database import save_exchange, get_chat_context, save_summary
+from src.api.services.database import save_exchange, get_chat_context, save_summary, SessionOwnershipError
 from src.api.services.inference import stream_chat_completion, complete_chat, InferenceError
 from src.api.services.rag import auto_search, format_passages
 from src.api.services.tools import TOOL_SCHEMAS, execute_tool
@@ -115,14 +115,14 @@ async def _summarize(previous: str | None, messages: List[Dict[str, Any]]) -> st
 class ChatService:
 
     @staticmethod
-    async def stream_compute(session_id: str, prompt: str) -> AsyncIterator[str]:
+    async def stream_compute(user_id: int, session_id: str, prompt: str) -> AsyncIterator[str]:
         """
         Fait tourner l'agent et renvoie un flux SSE d'événements JSON :
         delta (morceau de réponse), tool (appel d'un tool), done ou error.
         L'échange n'est enregistré qu'une fois la réponse complète.
         """
         summary, history = None, []
-        async for event in ChatService._build_context(session_id):
+        async for event in ChatService._build_context(user_id, session_id):
             if event["type"] == "context":
                 summary, history = event["summary"], event["history"]
             else:
@@ -133,7 +133,7 @@ class ChatService:
         # Ils ne sont pas enregistrés : seul le prompt brut l'est.
         question = prompt
         if RAG_AUTO_SEARCH:
-            passages = await auto_search(prompt)
+            passages = await auto_search(prompt, user_id)
             if passages:
                 yield _sse({"type": "status", "message": f"{len(passages)} passage(s) trouvé(s) dans les documents"})
                 question += (
@@ -155,7 +155,7 @@ class ChatService:
 
         answer = ""
         try:
-            async for event in ChatService._run_agent_loop(messages):
+            async for event in ChatService._run_agent_loop(messages, user_id):
                 if event["type"] == "delta":
                     answer += event["content"]
                 yield _sse(event)
@@ -163,17 +163,21 @@ class ChatService:
             yield _sse({"type": "error", "message": str(e)})
             return
 
-        await save_exchange(session_id, prompt, answer)
+        try:
+            await save_exchange(user_id, session_id, prompt, answer)
+        except SessionOwnershipError:
+            yield _sse({"type": "error", "message": "Conversation introuvable : la réponse n'a pas été enregistrée."})
+            return
         yield _sse({"type": "done"})
 
     @staticmethod
-    async def _build_context(session_id: str) -> AsyncIterator[Dict[str, Any]]:
+    async def _build_context(user_id: int, session_id: str) -> AsyncIterator[Dict[str, Any]]:
         """
         Charge le résumé et l'historique de la session. Si l'ensemble dépasse
         CONTEXT_TOKEN_BUDGET, les anciens échanges sont résumés et le résumé
         enregistré en base. Termine par un événement interne "context".
         """
-        summary, history = await get_chat_context(session_id)
+        summary, history = await get_chat_context(session_id, user_id)
 
         if _estimate_tokens(summary) + _estimate_messages(history) > CONTEXT_TOKEN_BUDGET:
             exchanges = _group_exchanges(history)
@@ -200,7 +204,7 @@ class ChatService:
         yield {"type": "context", "summary": summary, "history": history}
 
     @staticmethod
-    async def _run_agent_loop(messages: List[Dict[str, Any]]) -> AsyncIterator[Dict[str, Any]]:
+    async def _run_agent_loop(messages: List[Dict[str, Any]], user_id: int) -> AsyncIterator[Dict[str, Any]]:
         """
         Appelle le modèle tant qu'il demande des tools. Les messages tool
         intermédiaires ne vivent qu'en mémoire : seule la réponse est persistée.
@@ -225,7 +229,7 @@ class ChatService:
             messages.append({"role": "assistant", "content": content, "tool_calls": tool_calls})
             for call in tool_calls:
                 yield {"type": "tool", "name": call["function"]["name"]}
-                result = await execute_tool(call["function"]["name"], call["function"]["arguments"])
+                result = await execute_tool(call["function"]["name"], call["function"]["arguments"], user_id)
                 messages.append({"role": "tool", "tool_call_id": call["id"], "content": result})
 
             # Sépare le texte annonçant l'appel de la suite de la réponse.

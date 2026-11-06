@@ -3,8 +3,12 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-# Clé partagée entre le serveur et ses clients.
+# Clé d'accès machine au proxy OpenAI brut (/v1/chat/completions, /v1/models).
+# Les utilisateurs, eux, se connectent avec leur compte (python main.py adduser).
 HOMN_KEY: str = os.getenv("HOMN_KEY", "")
+
+# Durée de vie d'un jeton de connexion, en jours.
+AUTH_TOKEN_TTL_DAYS: int = int(os.getenv("AUTH_TOKEN_TTL_DAYS", "30"))
 
 # ─── Serveur d'inférence (machine GPU) ──────────────────────────────────────
 SERVER_NAME: str = os.getenv("SERVER_NAME", "unknown-node")
@@ -62,4 +66,6 @@ SERVER_PORT: int = int(os.getenv("SERVER_PORT", "8081"))
 
 # Port de l'interface web locale (toujours servie sur 127.0.0.1).
 CLIENT_PORT: int = int(os.getenv("CLIENT_PORT", "8090"))
+# Cookie de connexion réservé à HTTPS : à activer derrière le reverse proxy.
+COOKIE_SECURE: bool = os.getenv("COOKIE_SECURE", "false").lower() == "true"
 

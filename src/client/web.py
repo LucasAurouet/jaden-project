@@ -4,7 +4,9 @@ from fastapi import FastAPI
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 from src.client.services import homn
+from src.client.routers.auth import router as auth_router
 from src.client.routers.chat import router as chat_router
+from src.client.routers.sessions import router as sessions_router
 from src.client.routers.documents import router as documents_router
 from src.client.routers.metrics import router as metrics_router
 
@@ -25,7 +27,9 @@ app = FastAPI(title="Homn Systems Client", lifespan=lifespan)
 async def root():
     return FileResponse(os.path.join(static_path, "index.html"))
 
+app.include_router(auth_router, prefix="/api")
 app.include_router(chat_router, prefix="/api")
+app.include_router(sessions_router, prefix="/api")
 app.include_router(documents_router, prefix="/api")
 app.include_router(metrics_router, prefix="/api")
 

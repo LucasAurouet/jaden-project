@@ -12,9 +12,9 @@ MAX_SEARCH_RESULTS = 10
 
 # ─── Tools ──────────────────────────────────────────────────────────────────
 
-async def search_documents(query: str, k: int = DEFAULT_SEARCH_RESULTS) -> str:
+async def search_documents(user_id: int, query: str, k: int = DEFAULT_SEARCH_RESULTS) -> str:
     k = max(1, min(int(k), MAX_SEARCH_RESULTS))
-    candidates = await rag.search(query, k)
+    candidates = await rag.search(query, k, user_id)
     if not candidates:
         return "Aucun document indexé."
     # Un passage trouvé par mots-clés (BM25) est gardé même sous le seuil cosinus :
@@ -32,6 +32,7 @@ async def search_documents(query: str, k: int = DEFAULT_SEARCH_RESULTS) -> str:
 # ─── Registre ───────────────────────────────────────────────────────────────
 
 # Chaque entrée : {"function": coroutine, "description": str, "parameters": JSON Schema}.
+# La coroutine reçoit en premier argument l'id de l'utilisateur (absent du schéma).
 TOOLS: Dict[str, Dict[str, Any]] = {
     "search_documents": {
         "function": search_documents,
@@ -64,7 +65,7 @@ TOOL_SCHEMAS: List[Dict[str, Any]] = [
 ]
 
 
-async def execute_tool(name: str, raw_arguments: str | Dict[str, Any] | None) -> str:
+async def execute_tool(name: str, raw_arguments: str | Dict[str, Any] | None, user_id: int) -> str:
     """
     Exécute un tool demandé par le modèle. Ne lève jamais : toute erreur est
     renvoyée sous forme de texte pour que le modèle puisse corriger sa demande.
@@ -83,9 +84,14 @@ async def execute_tool(name: str, raw_arguments: str | Dict[str, Any] | None) ->
         except json.JSONDecodeError:
             return f"Erreur : arguments JSON invalides pour '{name}'."
 
+    if not isinstance(arguments, dict):
+        return f"Erreur : les arguments de '{name}' doivent être un objet JSON."
+    # user_id vient du serveur, jamais du modèle.
+    arguments.pop("user_id", None)
+
     func: Callable[..., Awaitable[str]] = tool["function"]
     try:
-        return await func(**arguments)
+        return await func(user_id, **arguments)
     except (TypeError, ValueError) as e:
         return f"Erreur : arguments incorrects pour '{name}' ({e})."
     except EmbeddingError as e:
