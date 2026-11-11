@@ -9,7 +9,8 @@ USAGE = """Usage: python main.py <commande>
   deluser <nom>              supprime le compte et ses conversations
   index <fichier>...         indexe des documents de référence (RAG), visibles de tous
   documents                  liste les documents indexés
-  unindex <id>               retire un document de l'index""".format(port=CLIENT_PORT)
+  unindex <id>               retire un document de l'index
+  sync-cards [--force]       met à jour la base de cartes depuis YGOPRODeck""".format(port=CLIENT_PORT)
 
 
 async def manage_users(command: str, args: list[str]) -> int:
@@ -96,6 +97,22 @@ async def manage_documents(command: str, args: list[str]) -> int:
     return status
 
 
+async def sync_cards(args: list[str]) -> int:
+    """Base de cartes : copie locale de l'API YGOPRODeck."""
+    from src.api.cards.sync import SyncError, sync_cards as run_sync
+    from src.api.services import database
+
+    await database.init_db()
+    try:
+        await run_sync(force="--force" in args)
+    except SyncError as e:
+        print(f"Erreur : {e}")
+        return 1
+    finally:
+        await database.close_db()
+    return 0
+
+
 if __name__ == "__main__":
     mode = sys.argv[1] if len(sys.argv) > 1 else "server"
 
@@ -118,6 +135,10 @@ if __name__ == "__main__":
     elif mode in ("index", "documents", "unindex"):
         import asyncio
         sys.exit(asyncio.run(manage_documents(mode, sys.argv[2:])))
+
+    elif mode == "sync-cards":
+        import asyncio
+        sys.exit(asyncio.run(sync_cards(sys.argv[2:])))
 
     else:
         print(USAGE)

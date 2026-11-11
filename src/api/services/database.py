@@ -46,6 +46,13 @@ async def init_db():
         )
 
 
+def get_pool() -> asyncpg.Pool:
+    """Pool de connexions, pour les modules qui ont leurs propres requêtes (cards/)."""
+    if _pool is None:
+        raise DatabaseError("Base non initialisée : appeler init_db d'abord.")
+    return _pool
+
+
 async def close_db():
     if _pool is not None:
         await _pool.close()

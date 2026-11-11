@@ -31,6 +31,7 @@ python main.py server                # backend on BIND_HOST:SERVER_PORT (default
 python main.py client                # web UI on http://127.0.0.1:CLIENT_PORT (default 8090)
 python main.py adduser <name> [--admin]   # create an account (also: passwd <name>, deluser <name>)
 python main.py index <file>...       # index reference documents for the RAG (also: documents, unindex <id>)
+python main.py sync-cards [--force]  # update the card database from YGOPRODeck (skipped if its version is unchanged)
 pwsh scripts/start-llama.ps1         # dev only: starts the chat + embeddings llama-server instances
 ```
 
@@ -82,6 +83,7 @@ browser (src/client/static, vanilla JS) ──/api/*──▶ client (src/client
 - **Upstream HTTP**: each upstream (LLM, embeddings, client→server) has a module-level `httpx.AsyncClient` created and closed in the FastAPI `lifespan`. Upstream failures are mapped to domain exceptions (`UpstreamUnavailable`/`UpstreamTimeout` become 502/504 in `server.py`, and `InferenceError` becomes an SSE `error` event).
 - **Metrics**: `/v1/metrics/all` combines psutil/NVML system stats with llama-server's Prometheus `/metrics`. The llama-server stats are empty for other providers. The chat llama-server must run with `--jinja` (tool calling) and `--metrics`.
 - Shared Pydantic models live in `src/schemas.py`.
+- **Card database** (Yu-Gi-Oh-specific code lives in `src/api/cards/`): `sync.py` downloads all cards from YGOPRODeck in English and French (3 requests, skipped when `checkDBVer` is unchanged, stored in `sync_state`) and replaces the data in one transaction. Skill cards and tokens are left out. `cards` holds one row per card (API codes such as `type`/`race`/`attribute` stay in English, `atk`/`def` = -1 means "?", the full API answer minus prices is in `raw`). `card_artworks` maps every artwork id (`.ydk` files may use them) to its card. The French translation is matched by any artwork id, then by English name, because both languages do not always pick the same main id. Name lookup uses `pg_trgm` on `name_key_en`/`name_key_fr` (normalized by `cards/text.py`: lowercase, no accents or punctuation); in SQL, wrap comparisons on the nullable `name_key_fr` in `coalesce`, or NULLs sort first. Effects are searchable through the generated `search_en`/`search_fr` tsvectors. The model is given English effect texts (precise PSCT wording) and both names.
 
 ## Référence
 - ~/hdd/open-webui (v0.12.3) est une référence de conception, en lecture seule.
