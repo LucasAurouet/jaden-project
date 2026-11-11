@@ -272,19 +272,19 @@ BM25_B = 0.75
 async def search_chunks_bm25(query: str, embedding: List[float], k: int) -> List[Dict[str, Any]]:
     """
     Les k meilleurs passages selon BM25, calculé sur le tsvector des passages
-    (configuration french, comme dans la migration). Il suffit qu'un passage
+    (configuration english, comme dans la migration). Il suffit qu'un passage
     contienne un des termes de la requête : l'IDF donne leur poids aux termes rares.
     La longueur d'un passage est son nombre de lexèmes distincts (approximation).
     Le score cosinus est aussi renvoyé, pour les seuils appliqués après fusion.
     """
     rows = await _pool.fetch("""
         WITH terms AS (
-            SELECT unnest(tsvector_to_array(to_tsvector('french', $1))) AS lexeme
+            SELECT unnest(tsvector_to_array(to_tsvector('english', $1))) AS lexeme
         ),
         matched AS (
             -- plainto_tsquery relie les termes par & : on les relie par | (OU).
             SELECT c.id, c.tsv FROM chunks c
-            WHERE c.tsv @@ replace(plainto_tsquery('french', $1)::text, ' & ', ' | ')::tsquery
+            WHERE c.tsv @@ replace(plainto_tsquery('english', $1)::text, ' & ', ' | ')::tsquery
         ),
         tf AS (
             SELECT m.id, t.lexeme, cardinality(t.positions) AS freq, length(m.tsv) AS len
