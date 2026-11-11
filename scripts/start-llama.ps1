@@ -84,9 +84,9 @@ $Servers = @(
     @{
         Name = "chat"
         Port = $ChatPort
-        # --jinja : indispensable aux tools ; --metrics : moniteur de l'interface.
+        # --jinja : indispensable aux tools.
         Args = @("-m", $ChatModel, "--host", "127.0.0.1", "--port", $ChatPort,
-                 "-ngl", "99", "-c", $ChatCtx, "--jinja", "--metrics")
+                 "-ngl", "99", "-c", $ChatCtx, "--jinja")
     },
     @{
         Name = "embed"

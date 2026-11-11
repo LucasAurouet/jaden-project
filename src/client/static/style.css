@@ -95,7 +95,7 @@ body {
     flex: 1;
     min-height: 0;
     display: grid;
-    grid-template-columns: 260px minmax(0, 1fr) 270px;
+    grid-template-columns: minmax(0, 1fr) 270px;
     gap: 16px;
 }
 
@@ -229,86 +229,7 @@ body {
     white-space: nowrap;
 }
 
-/* ─── 01 · MONITEUR ─────────────────────────────────────────────────────── */
-.gauges {
-    flex: 1;
-    min-height: 0;
-    overflow-y: auto;
-    padding: 14px 16px;
-    display: flex;
-    flex-direction: column;
-    gap: 14px;
-}
-
-.gauge { flex: 1; min-height: 82px; display: flex; flex-direction: column; }
-
-.gauge__head { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 6px; }
-
-.gauge__label {
-    font-family: var(--f-display);
-    font-size: 0.66rem;
-    letter-spacing: 0.2em;
-    color: var(--text-dim);
-}
-
-.gauge__value {
-    font-family: var(--f-mono);
-    font-size: 0.95rem;
-    color: var(--c);
-    font-variant-numeric: tabular-nums;
-}
-
-.scope {
-    position: relative;
-    flex: 1;
-    min-height: 56px;
-    max-height: 150px;
-    border: 1px solid var(--line);
-    background: var(--sunken);
-}
-
-.scope canvas { position: absolute; inset: 0; width: 100% !important; height: 100% !important; }
-
-.readouts {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    margin: 0 6px;
-    border-top: 1px solid var(--line);
-    flex-shrink: 0;
-}
-.readouts > div { padding: 10px 12px; border-bottom: 1px solid var(--line); }
-.readouts > div:nth-child(odd) { border-right: 1px solid var(--line); }
-.readouts > div:nth-last-child(-n+2) { border-bottom: none; }
-
-.readouts dt, .specs dt {
-    font-family: var(--f-display);
-    font-size: 0.6rem;
-    letter-spacing: 0.2em;
-    color: var(--text-off);
-}
-
-.readouts dd {
-    font-family: var(--f-mono);
-    font-size: 0.82rem;
-    color: var(--text);
-    margin-top: 3px;
-    font-variant-numeric: tabular-nums;
-}
-.readouts dd.hot { color: var(--red); }
-
-.specs {
-    margin: 0 6px 6px;
-    border-top: 1px solid var(--line);
-    padding: 12px 12px 10px;
-    display: grid;
-    gap: 6px;
-    flex-shrink: 0;
-}
-.specs > div { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
-.specs dd { font-family: var(--f-mono); font-size: 0.7rem; color: var(--text); }
-.specs dd.live { color: var(--green); }
-
-/* ─── 02 · DIALOGUE ─────────────────────────────────────────────────────── */
+/* ─── 01 · DIALOGUE ─────────────────────────────────────────────────────── */
 .panel--terminal { overflow: hidden; }
 
 /* Cercle d'invocation décoratif derrière le dialogue */
@@ -653,7 +574,6 @@ body {
 /* ─── ÉCRANS ÉTROITS ────────────────────────────────────────────────────── */
 @media (max-width: 1180px) {
     .layout { grid-template-columns: minmax(0, 1fr) 250px; }
-    .panel--monitor { display: none; }
 }
 
 @media (max-width: 780px) {

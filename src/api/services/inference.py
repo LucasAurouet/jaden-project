@@ -1,9 +1,7 @@
 import json
-import re
 import httpx
 from typing import Any, AsyncIterator, Dict, List
 from config import LLM_BASE_URL, LLM_API_KEY, LLM_MODEL, LLM_TIMEOUT
-from src.schemas import LlamaMetrics
 
 _client: httpx.AsyncClient | None = None
 
@@ -100,28 +98,3 @@ async def complete_chat(messages: List[Dict[str, Any]], max_tokens: int | None =
     async for delta in stream_chat_completion(messages, max_tokens=max_tokens):
         content += delta.get("content") or ""
     return content
-
-
-async def get_llama_metrics_from_api() -> LlamaMetrics:
-    """
-    Lit l'endpoint Prometheus /metrics de llama-server (lancé avec --metrics).
-    Métriques vides avec tout autre fournisseur.
-    """
-    try:
-        r = await _client.get("/metrics", timeout=1.0)
-        if r.status_code != 200:
-            return LlamaMetrics()
-    except httpx.HTTPError:
-        return LlamaMetrics()
-
-    text = r.text
-
-    def extract(key: str) -> float | None:
-        m = re.search(rf"^{re.escape(key)}\s+(\S+)", text, re.MULTILINE)
-        return float(m.group(1)) if m else None
-
-    return LlamaMetrics(
-        tg_tokens_per_sec=extract("llamacpp:predicted_tokens_seconds"),
-        pp_tokens_per_sec=extract("llamacpp:prompt_tokens_seconds"),
-        kv_cache_usage=extract("llamacpp:kv_cache_usage_ratio"),
-    )

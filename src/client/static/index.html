@@ -45,63 +45,10 @@
 
         <main class="layout">
 
-            <!-- métriques du serveur GPU -->
-            <section class="panel panel--monitor" aria-label="System monitor">
-                <header class="panel__head">
-                    <span class="panel__idx">I</span>
-                    <span class="panel__title">MONITOR</span>
-                    <span class="panel__meta">SRV·GPU</span>
-                </header>
-
-                <div class="gauges">
-                    <div class="gauge" style="--c: var(--accent)">
-                        <div class="gauge__head">
-                            <span class="gauge__label">CPU</span>
-                            <span class="gauge__value" id="stat-cpu">—</span>
-                        </div>
-                        <div class="scope"><canvas id="chart-cpu"></canvas></div>
-                    </div>
-                    <div class="gauge" style="--c: var(--cyan)">
-                        <div class="gauge__head">
-                            <span class="gauge__label">RAM</span>
-                            <span class="gauge__value" id="stat-ram">—</span>
-                        </div>
-                        <div class="scope"><canvas id="chart-ram"></canvas></div>
-                    </div>
-                    <div class="gauge" style="--c: var(--red)">
-                        <div class="gauge__head">
-                            <span class="gauge__label">GPU</span>
-                            <span class="gauge__value" id="stat-gpu">—</span>
-                        </div>
-                        <div class="scope"><canvas id="chart-gpu"></canvas></div>
-                    </div>
-                    <div class="gauge" style="--c: var(--green)">
-                        <div class="gauge__head">
-                            <span class="gauge__label">GENERATION</span>
-                            <span class="gauge__value" id="stat-tokens">—</span>
-                        </div>
-                        <div class="scope"><canvas id="chart-tokens"></canvas></div>
-                    </div>
-                </div>
-
-                <dl class="readouts">
-                    <div><dt>VRAM</dt><dd id="read-vram">—</dd></div>
-                    <div><dt>TEMP·GPU</dt><dd id="read-temp">—</dd></div>
-                    <div><dt>PROMPT</dt><dd id="read-pp">—</dd></div>
-                    <div><dt>UPTIME</dt><dd id="read-uptime">—</dd></div>
-                </dl>
-
-                <dl class="specs">
-                    <div><dt>MODEL</dt><dd>QWEN·2.5·CODER·7B</dd></div>
-                    <div><dt>ENGINE</dt><dd>LLAMA·CPP</dd></div>
-                    <div><dt>MODE</dt><dd class="live">LOCAL·SOVEREIGN</dd></div>
-                </dl>
-            </section>
-
             <!-- Terminal de dialogue -->
             <section class="panel panel--terminal" aria-label="Dialog">
                 <header class="panel__head">
-                    <span class="panel__idx">II</span>
+                    <span class="panel__idx">I</span>
                     <span class="panel__title">THE CODEX</span>
                     <span class="panel__meta" id="msg-counter">00 EXCHANGE</span>
                 </header>
@@ -139,7 +86,7 @@
             <!-- Conversations de l'utilisateur -->
             <aside class="panel panel--sessions" aria-label="Conversations">
                 <header class="panel__head">
-                    <span class="panel__idx">III</span>
+                    <span class="panel__idx">II</span>
                     <span class="panel__title">CHRONICLE</span>
                 </header>
 
@@ -179,7 +126,6 @@
         </form>
     </div>
 
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
     <script src="/static/marked.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/dompurify/3.1.6/purify.min.js"></script>
     <script src="/static/highlight.min.js"></script>

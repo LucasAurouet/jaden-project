@@ -10,7 +10,6 @@ from src.api.routers.auth import router as auth_router
 from src.api.routers.chat import router as chat_router
 from src.api.routers.sessions import router as sessions_router
 from src.api.routers.system import router as system_router
-from src.api.routers.metrics import router as metrics_router
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -47,4 +46,3 @@ app.include_router(inference_router, prefix="/v1")
 app.include_router(auth_router, prefix="/v1")
 app.include_router(chat_router, prefix="/v1")
 app.include_router(sessions_router, prefix="/v1")
-app.include_router(metrics_router, prefix="/v1")

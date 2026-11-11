@@ -93,13 +93,11 @@ async def delete_session(token: str, session_id: str):
     await _request("DELETE", f"/v1/sessions/{quote(session_id, safe='')}", token)
 
 
-# ─── Statistiques ───────────────────────────────────────────────────────────
+# ─── État du serveur ────────────────────────────────────────────────────────
 
-async def get_server_metrics(token: str) -> Dict[str, Any]:
+async def server_reachable() -> bool:
     try:
-        response = await _client.get("/v1/metrics/all", headers={"Authorization": f"Bearer {token}"}, timeout=2.0)
-        if response.status_code == 200:
-            return response.json()
+        response = await _client.get("/v1/health", timeout=2.0)
+        return response.status_code == 200
     except httpx.HTTPError:
-        pass
-    return {}
+        return False

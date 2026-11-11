@@ -23,7 +23,7 @@ The model never states a card fact from memory: effects and stats come from tool
 - Python 3.10 to 3.13. Python 3.14 is not supported yet: asyncpg 0.30 has no build for it.
 - Server only:
   - PostgreSQL with the `pgvector` and `pg_trgm` extensions.
-  - An OpenAI-compatible LLM endpoint. With llama-server, start it with `--jinja` (needed for tool calling) and `--metrics`.
+  - An OpenAI-compatible LLM endpoint. With llama-server, start it with `--jinja` (needed for tool calling).
   - An OpenAI-compatible embeddings endpoint, for example llama-server with `--embedding` and bge-m3 (1024 dimensions).
 
 ## Installation
