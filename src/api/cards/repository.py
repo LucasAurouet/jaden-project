@@ -68,6 +68,15 @@ async def get_by_ids(ids: List[int]) -> Dict[int, Dict[str, Any]]:
     return {row["requested_id"]: {k: v for k, v in dict(row).items() if k != "requested_id"} for row in rows}
 
 
+async def get_by_card_ids(ids: List[int]) -> Dict[int, Dict[str, Any]]:
+    """Cartes par id principal, avec leur type lisible (« Quick-Play Spell »...)."""
+    rows = await database.get_pool().fetch(f"""
+        SELECT {CARD_FIELDS}, c.raw->>'humanReadableCardType' AS human_type
+        FROM cards c WHERE c.id = ANY($1::bigint[])
+    """, ids)
+    return {row["id"]: dict(row) for row in rows}
+
+
 async def get_archetype(archetype: str, master_duel_only: bool = True) -> List[Dict[str, Any]]:
     """Cartes de l'archétype (nom exact, sans tenir compte de la casse), par type puis par nom."""
     rows = await database.get_pool().fetch(f"""

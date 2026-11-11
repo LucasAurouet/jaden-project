@@ -1,4 +1,5 @@
 import asyncio
+import json
 import asyncpg
 from pathlib import Path
 from alembic import command
@@ -209,8 +210,50 @@ async def get_messages(session_id: str, user_id: int) -> List[Dict[str, Any]] | 
 
 
 async def delete_session(session_id: str, user_id: int) -> bool:
-    """Supprime la session et ses messages (ON DELETE CASCADE)."""
+    """Supprime la session, ses messages et son deck (ON DELETE CASCADE)."""
     status = await _pool.execute("DELETE FROM sessions WHERE id = $1 AND user_id = $2", session_id, user_id)
+    return status != "DELETE 0"
+
+
+# ─── Deck de la session ─────────────────────────────────────────────────────
+
+async def save_deck(user_id: int, session_id: str, name: str, cards: List[Dict[str, Any]]):
+    """
+    Enregistre (ou remplace) le deck de la session. Une session pas encore
+    créée (aucun échange) l'est ici, avec le nom du deck pour titre.
+    """
+    async with _pool.acquire() as conn, conn.transaction():
+        await conn.execute(
+            "INSERT INTO sessions (id, user_id, title) VALUES ($1, $2, $3) ON CONFLICT DO NOTHING",
+            session_id, user_id, name[:TITLE_LENGTH],
+        )
+        owner = await conn.fetchval(
+            "UPDATE sessions SET updated_at = now() WHERE id = $1 RETURNING user_id", session_id
+        )
+        if owner != user_id:
+            raise SessionOwnershipError(session_id)
+        await conn.execute("""
+            INSERT INTO session_decks (session_id, name, cards) VALUES ($1, $2, $3::jsonb)
+            ON CONFLICT (session_id) DO UPDATE SET name = EXCLUDED.name, cards = EXCLUDED.cards, created_at = now()
+        """, session_id, name, json.dumps(cards))
+
+
+async def get_deck(session_id: str, user_id: int) -> Dict[str, Any] | None:
+    """Deck de la session ({name, cards}), ou None s'il n'y en a pas."""
+    row = await _pool.fetchrow("""
+        SELECT d.name, d.cards FROM session_decks d JOIN sessions s ON s.id = d.session_id
+        WHERE d.session_id = $1 AND s.user_id = $2
+    """, session_id, user_id)
+    if row is None:
+        return None
+    return {"name": row["name"], "cards": json.loads(row["cards"])}
+
+
+async def delete_deck(session_id: str, user_id: int) -> bool:
+    status = await _pool.execute("""
+        DELETE FROM session_decks d USING sessions s
+        WHERE d.session_id = $1 AND s.id = d.session_id AND s.user_id = $2
+    """, session_id, user_id)
     return status != "DELETE 0"
 
 

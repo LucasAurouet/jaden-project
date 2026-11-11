@@ -2,7 +2,7 @@ import httpx
 from urllib.parse import quote
 from typing import Any, Dict, List
 from config import SERVER_IP, SERVER_PORT, LLM_TIMEOUT
-from src.schemas import ComputeRequest, LoginRequest
+from src.schemas import ComputeRequest, DeckImport, LoginRequest
 
 SERVER_URL = f"http://{SERVER_IP}:{SERVER_PORT}"
 
@@ -91,6 +91,19 @@ async def get_messages(token: str, session_id: str) -> List[Dict[str, Any]]:
 
 async def delete_session(token: str, session_id: str):
     await _request("DELETE", f"/v1/sessions/{quote(session_id, safe='')}", token)
+
+
+async def get_deck(token: str, session_id: str) -> Dict[str, Any]:
+    return (await _request("GET", f"/v1/sessions/{quote(session_id, safe='')}/deck", token)).json()
+
+
+async def import_deck(token: str, session_id: str, name: str, content: str) -> Dict[str, Any]:
+    payload = DeckImport(name=name, content=content).model_dump()
+    return (await _request("PUT", f"/v1/sessions/{quote(session_id, safe='')}/deck", token, json=payload)).json()
+
+
+async def delete_deck(token: str, session_id: str):
+    await _request("DELETE", f"/v1/sessions/{quote(session_id, safe='')}/deck", token)
 
 
 # ─── État du serveur ────────────────────────────────────────────────────────

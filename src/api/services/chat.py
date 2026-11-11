@@ -1,6 +1,7 @@
 import json
 from typing import Any, AsyncIterator, Iterator, List, Dict
 from config import CONTEXT_TOKEN_BUDGET, RAG_AUTO_SEARCH
+from src.api.cards import decks
 from src.api.services.database import save_exchange, get_chat_context, save_summary, SessionOwnershipError
 from src.api.services.inference import stream_chat_completion, complete_chat, InferenceError
 from src.api.services.rag import auto_search, format_passages
@@ -11,7 +12,9 @@ SYSTEM_PROMPT = (
     "Reference documents are indexed: use the search_documents tool whenever the question "
     "may relate to them, and cite the source of the passages you use. "
     "Automatically retrieved passages may be appended to the user's message: "
-    "ignore them if they are off-topic, and use search_documents if they are not enough."
+    "ignore them if they are off-topic, and use search_documents if they are not enough. "
+    "When the user has imported a deck, its list and card texts follow: answer questions "
+    "about that deck from them."
 )
 MAX_TOOL_ITERATIONS = 3
 
@@ -121,8 +124,13 @@ class ChatService:
         delta (morceau de réponse), tool (appel d'un tool), done ou error.
         L'échange n'est enregistré qu'une fois la réponse complète.
         """
+        # Le deck importé est relu à chaque tour (cartes à jour) et sa taille est
+        # retirée du budget de l'historique : le total envoyé au LLM reste borné.
+        deck = await decks.load_deck(session_id, user_id)
+        deck_text = deck.prompt_text() if deck and deck.cards else None
+
         summary, history = None, []
-        async for event in ChatService._build_context(user_id, session_id):
+        async for event in ChatService._build_context(user_id, session_id, reserved=_estimate_tokens(deck_text)):
             if event["type"] == "context":
                 summary, history = event["summary"], event["history"]
             else:
@@ -142,9 +150,12 @@ class ChatService:
                 )
 
         # L'historique en base ne contient que des tours user/assistant :
-        # le message système est ajouté à chaque appel. Le résumé y est fusionné,
-        # car certains templates refusent un second message système.
+        # le message système est ajouté à chaque appel. Le deck et le résumé y sont
+        # fusionnés, car certains templates refusent un second message système.
+        # Le deck passe avant le résumé : il change moins souvent (cache de llama-server).
         system = SYSTEM_PROMPT
+        if deck_text:
+            system += f"\n\n{deck_text}"
         if summary:
             system += f"\n\nSummary of the previous exchanges:\n{summary}"
         messages = (
@@ -171,20 +182,23 @@ class ChatService:
         yield _sse({"type": "done"})
 
     @staticmethod
-    async def _build_context(user_id: int, session_id: str) -> AsyncIterator[Dict[str, Any]]:
+    async def _build_context(user_id: int, session_id: str, reserved: int = 0) -> AsyncIterator[Dict[str, Any]]:
         """
         Charge le résumé et l'historique de la session. Si l'ensemble dépasse
-        CONTEXT_TOKEN_BUDGET, les anciens échanges sont résumés et le résumé
-        enregistré en base. Termine par un événement interne "context".
+        CONTEXT_TOKEN_BUDGET moins reserved (tokens déjà pris par le deck dans le
+        prompt système), les anciens échanges sont résumés et le résumé enregistré
+        en base. Termine par un événement interne "context".
         """
         summary, history = await get_chat_context(session_id, user_id)
+        budget = max(CONTEXT_TOKEN_BUDGET - reserved, 0)
 
-        if _estimate_tokens(summary) + _estimate_messages(history) > CONTEXT_TOKEN_BUDGET:
+        # Sans message brut (tout est déjà résumé), il n'y a rien de plus à résumer.
+        if history and _estimate_tokens(summary) + _estimate_messages(history) > budget:
             exchanges = _group_exchanges(history)
             # On garde au moins le dernier échange, puis les précédents tant qu'ils tiennent.
             keep = len(exchanges) - 1
             size = _estimate_messages(exchanges[-1])
-            while keep > 0 and size + _estimate_messages(exchanges[keep - 1]) <= CONTEXT_KEEP_RATIO * CONTEXT_TOKEN_BUDGET:
+            while keep > 0 and size + _estimate_messages(exchanges[keep - 1]) <= CONTEXT_KEEP_RATIO * budget:
                 keep -= 1
                 size += _estimate_messages(exchanges[keep])
 

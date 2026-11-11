@@ -9,6 +9,8 @@ const sendBtn = document.getElementById("send-btn");
 const sessionList = document.getElementById("session-list");
 const loginScreen = document.getElementById("login");
 const loginForm = document.getElementById("login-form");
+const deckDialog = document.getElementById("deck-dialog");
+const deckForm = document.getElementById("deck-form");
 
 // Écran d'accueil d'une conversation vide, recopié à chaque nouvelle discussion.
 const bootTemplate = document.getElementById("boot").cloneNode(true);
@@ -44,6 +46,20 @@ promptForm.addEventListener("submit", (e) => {
 document.getElementById("new-session-btn").addEventListener("click", () => {
     newSession();
     userInput.focus();
+});
+
+document.getElementById("deck-import-btn").addEventListener("click", openDeckDialog);
+document.getElementById("deck-remove-btn").addEventListener("click", removeDeck);
+document.getElementById("deck-cancel").addEventListener("click", () => deckDialog.close());
+document.getElementById("deck-file").addEventListener("change", (e) => {
+    // Le nom du fichier sert de nom par défaut.
+    const file = e.target.files[0];
+    const nameInput = document.getElementById("deck-name-input");
+    if (file && !nameInput.value.trim()) nameInput.value = file.name.replace(/\.ydk$/i, "").slice(0, 80);
+});
+deckForm.addEventListener("submit", (e) => {
+    e.preventDefault();
+    importDeck();
 });
 
 document.getElementById("logout-btn").addEventListener("click", async () => {
@@ -108,6 +124,8 @@ function showLogin() {
     document.getElementById("user-box").hidden = true;
     sessionList.replaceChildren();
     resetChat();
+    renderDeck(null);
+    if (deckDialog.open) deckDialog.close();
     loginScreen.hidden = false;
     document.getElementById("login-username").focus();
 }
@@ -138,6 +156,8 @@ function tickClock() {
 // Les erreurs FastAPI arrivent sous la forme {"detail": "..."}.
 async function errorMessage(response) {
     const data = await response.json().catch(() => null);
+    // Erreur de validation : liste de {msg, loc...}.
+    if (Array.isArray(data?.detail)) return data.detail.map(d => d.msg).join(" ");
     return data?.detail || `HTTP error ${response.status}`;
 }
 
@@ -167,6 +187,7 @@ function newSession() {
     sessionSaved = false;
     window.history.replaceState(null, "", location.pathname);
     resetChat();
+    renderDeck(null);
     highlightSession();
 }
 
@@ -189,6 +210,7 @@ async function openSession(id) {
         }
         setExchangeCount(messages.filter(m => m.role === "user").length);
         highlightSession();
+        await loadDeck(id);
     } catch (error) {
         appendMessage(`Cannot open the conversation: ${error.message}`, "error");
     }
@@ -263,6 +285,138 @@ function renderSessions(sessions) {
 function highlightSession() {
     for (const li of sessionList.querySelectorAll(".session-item")) {
         li.setAttribute("aria-current", li.dataset.id === sessionId ? "true" : "false");
+    }
+}
+
+
+// ─── DECK ───────────────────────────────────────────────────────────────────
+// Le deck appartient à la conversation : le serveur l'injecte dans le contexte
+// du modèle à chaque question.
+const DECK_SECTIONS = [["main", "MAIN DECK"], ["extra", "EXTRA DECK"], ["side", "SIDE DECK"]];
+
+const deckUrl = (id) => `${SESSIONS_URL}/${encodeURIComponent(id)}/deck`;
+
+async function loadDeck(id) {
+    renderDeck(null);
+    try {
+        const response = await apiFetch(deckUrl(id));
+        if (response.status === 404) return;
+        if (!response.ok) throw new Error(await errorMessage(response));
+        const deck = await response.json();
+        // L'utilisateur a pu changer de conversation entre-temps.
+        if (id === sessionId) renderDeck(deck);
+    } catch (error) {
+        console.error("Cannot load the deck:", error);
+    }
+}
+
+function renderDeck(deck, unresolved = []) {
+    const view = document.getElementById("deck-view");
+    const importBtn = document.getElementById("deck-import-btn");
+    const meta = document.getElementById("deck-meta");
+    if (!deck) {
+        view.hidden = true;
+        meta.textContent = "";
+        importBtn.textContent = "+ IMPORT DECK";
+        return;
+    }
+
+    view.hidden = false;
+    importBtn.textContent = "↻ REPLACE DECK";
+    meta.textContent = `${deck.main}·${deck.extra}·${deck.side}`;
+    meta.title = `Main ${deck.main}, Extra ${deck.extra}, Side ${deck.side} · about ${deck.tokens} tokens of context`;
+    document.getElementById("deck-name").textContent = deck.name;
+    document.getElementById("deck-name").title = deck.name;
+
+    const warn = document.getElementById("deck-warn");
+    warn.hidden = unresolved.length === 0;
+    warn.textContent = unresolved.length
+        ? `Not found (${unresolved.length}): ${unresolved.join(", ")}`
+        : "";
+
+    const items = [];
+    for (const [section, title] of DECK_SECTIONS) {
+        const cards = deck.cards.filter(c => c.section === section);
+        if (cards.length === 0) continue;
+        const head = document.createElement("li");
+        head.className = "deck__section";
+        head.textContent = `${title} · ${deck[section]}`;
+        items.push(head);
+        for (const card of cards) {
+            const li = document.createElement("li");
+            li.className = "deck-card";
+            li.dataset.frame = card.frame_type.split("_")[0];
+            const qty = document.createElement("span");
+            qty.className = "deck-card__qty";
+            qty.textContent = `${card.qty}×`;
+            const name = document.createElement("span");
+            name.className = "deck-card__name";
+            name.textContent = card.name;
+            name.title = card.name;
+            li.append(qty, name);
+            items.push(li);
+        }
+    }
+    document.getElementById("deck-list").replaceChildren(...items);
+}
+
+function openDeckDialog() {
+    deckForm.reset();
+    document.getElementById("deck-error").textContent = "";
+    deckDialog.showModal();
+    document.getElementById("deck-file").focus();
+}
+
+async function importDeck() {
+    const error = document.getElementById("deck-error");
+    const submit = document.getElementById("deck-submit");
+    const id = sessionId;
+    const file = document.getElementById("deck-file").files[0];
+    error.textContent = "";
+    if (file.size > 50000) {
+        error.textContent = "This file is too large for a .ydk deck.";
+        return;
+    }
+    submit.disabled = true;
+    try {
+        const response = await apiFetch(deckUrl(id), {
+            method: "PUT",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+                name: document.getElementById("deck-name-input").value.trim(),
+                content: await file.text(),
+            }),
+        });
+        if (!response.ok) {
+            error.textContent = await errorMessage(response);
+            return;
+        }
+        const deck = await response.json();
+        deckDialog.close();
+        if (id !== sessionId) return;
+        renderDeck(deck, deck.unresolved);
+        // L'import crée la session côté serveur si elle n'existait pas encore.
+        if (!sessionSaved) {
+            sessionSaved = true;
+            window.history.replaceState(null, "", `#${encodeURIComponent(sessionId)}`);
+        }
+        fetchSessions();
+        userInput.focus();
+    } catch (err) {
+        error.textContent = err.message;
+    } finally {
+        submit.disabled = false;
+    }
+}
+
+async function removeDeck() {
+    if (!confirm("Remove the deck from this conversation?")) return;
+    try {
+        const response = await apiFetch(deckUrl(sessionId), { method: "DELETE" });
+        if (!response.ok && response.status !== 404) throw new Error(await errorMessage(response));
+        renderDeck(null);
+    } catch (error) {
+        alert(`Cannot remove the deck: ${error.message}`);
     }
 }
 

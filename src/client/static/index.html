@@ -83,10 +83,32 @@
 
             <div class="sidebar">
 
+            <!-- Deck importé dans la conversation : injecté dans le contexte du modèle -->
+            <aside class="panel panel--deck" aria-label="Deck">
+                <header class="panel__head">
+                    <span class="panel__idx">II</span>
+                    <span class="panel__title">GRIMOIRE</span>
+                    <span class="panel__meta" id="deck-meta"></span>
+                </header>
+
+                <div class="upload">
+                    <button class="btn btn--ghost" id="deck-import-btn">+ IMPORT DECK</button>
+                </div>
+
+                <div class="deck" id="deck-view" hidden>
+                    <div class="deck__head">
+                        <span class="deck__name" id="deck-name"></span>
+                        <button class="document-delete deck__remove" id="deck-remove-btn" title="Remove the deck from this conversation" aria-label="Remove the deck">✕</button>
+                    </div>
+                    <p class="deck__warn" id="deck-warn" hidden></p>
+                    <ul class="deck__list" id="deck-list"></ul>
+                </div>
+            </aside>
+
             <!-- Conversations de l'utilisateur -->
             <aside class="panel panel--sessions" aria-label="Conversations">
                 <header class="panel__head">
-                    <span class="panel__idx">II</span>
+                    <span class="panel__idx">III</span>
                     <span class="panel__title">CHRONICLE</span>
                 </header>
 
@@ -103,6 +125,31 @@
 
         </main>
     </div>
+
+    <!-- Import d'un deck : fichier .ydk -->
+    <dialog class="panel modal" id="deck-dialog" aria-label="Import a deck">
+        <form id="deck-form" autocomplete="off">
+            <header class="panel__head">
+                <span class="panel__idx">✦</span>
+                <span class="panel__title">IMPORT A DECK</span>
+            </header>
+            <div class="login__body">
+                <label class="login__field">
+                    <span>.YDK FILE</span>
+                    <input type="file" id="deck-file" accept=".ydk" required>
+                </label>
+                <label class="login__field">
+                    <span>NAME</span>
+                    <input type="text" id="deck-name-input" maxlength="80" required>
+                </label>
+                <span class="login__error" id="deck-error" role="alert"></span>
+                <div class="modal__actions">
+                    <button type="button" class="btn btn--small" id="deck-cancel">CANCEL</button>
+                    <button type="submit" class="btn btn--primary" id="deck-submit">IMPORT</button>
+                </div>
+            </div>
+        </form>
+    </dialog>
 
     <!-- Connexion : masque l'application tant que l'utilisateur n'est pas connecté. -->
     <div class="login" id="login" hidden>
