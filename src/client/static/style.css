@@ -602,6 +602,60 @@ body {
 .modal form { display: flex; flex-direction: column; min-height: 0; width: 100%; overflow-y: auto; }
 .modal::backdrop { background: rgba(10, 7, 17, 0.72); }
 .modal__actions { display: flex; justify-content: flex-end; gap: 10px; }
+/* Fiche d'une carte du deck (version texte) */
+.deck-card { cursor: pointer; }
+.deck-card:focus-visible { outline: 1px solid var(--gold); outline-offset: -1px; }
+
+.card-modal { width: min(560px, calc(100% - 32px)); }
+.card-modal .panel__head { align-items: center; }
+.card-modal__close { margin-left: 8px; opacity: 1; }
+.card-modal__nav { justify-content: space-between; padding: 0 18px 16px; }
+
+.card-sheet {
+    --frame-color: var(--type-effect);
+    margin: 14px 18px;
+    padding: 14px 16px;
+    min-height: 0;
+    overflow-y: auto;
+    background: var(--sunken);
+    border: 1px solid var(--line);
+    border-left: 4px solid var(--frame-color);
+}
+.card-sheet[data-frame="normal"]  { --frame-color: var(--type-normal); }
+.card-sheet[data-frame="ritual"]  { --frame-color: var(--type-ritual); }
+.card-sheet[data-frame="fusion"]  { --frame-color: var(--type-fusion); }
+.card-sheet[data-frame="synchro"] { --frame-color: var(--type-synchro); }
+/* Le noir des Xyz disparaît sur le fond : on l'éclaircit pour la bordure. */
+.card-sheet[data-frame="xyz"]     { --frame-color: #5a5a66; }
+.card-sheet[data-frame="link"]    { --frame-color: var(--type-link); }
+.card-sheet[data-frame="spell"]   { --frame-color: var(--type-spell); }
+.card-sheet[data-frame="trap"]    { --frame-color: var(--type-trap); }
+
+.card-sheet__title { display: flex; align-items: baseline; gap: 10px; }
+.card-sheet__name {
+    flex: 1;
+    min-width: 0;
+    font-family: var(--f-display);
+    font-size: 1.2rem;
+    font-weight: 600;
+    color: var(--text-warm);
+    overflow-wrap: anywhere;
+}
+.card-sheet__qty { flex-shrink: 0; font-family: var(--f-mono); font-size: 0.8rem; color: var(--gold); }
+
+.card-sheet__stats { list-style: none; display: flex; flex-wrap: wrap; gap: 6px; margin: 10px 0 12px; }
+.card-sheet__stats li {
+    padding: 2px 8px;
+    font-family: var(--f-mono);
+    font-size: 0.72rem;
+    color: var(--text-dim);
+    border: 1px solid var(--line);
+}
+.card-sheet__stats li:first-child { color: var(--text); border-color: var(--frame-color); }
+
+/* pre-line garde les sauts de ligne du texte (effets Pendulum, matériels). */
+.card-sheet__text { white-space: pre-line; font-size: 0.95rem; line-height: 1.55; color: var(--text); }
+
 .login__field input[type="file"] { padding: 8px 10px; font-size: 0.85rem; color: var(--text-dim); }
 
 /* ─── UTILISATEUR ───────────────────────────────────────────────────────── */

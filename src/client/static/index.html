@@ -151,6 +151,28 @@
         </form>
     </dialog>
 
+    <!-- Fiche d'une carte du deck (version texte, sans image) -->
+    <dialog class="panel modal card-modal" id="card-dialog" aria-labelledby="card-name">
+        <header class="panel__head">
+            <span class="panel__idx">✦</span>
+            <span class="panel__title" id="card-section"></span>
+            <span class="panel__meta" id="card-position"></span>
+            <button type="button" class="document-delete card-modal__close" id="card-close" title="Close" aria-label="Close">✕</button>
+        </header>
+        <article class="card-sheet" id="card-sheet">
+            <div class="card-sheet__title">
+                <h2 class="card-sheet__name" id="card-name"></h2>
+                <span class="card-sheet__qty" id="card-qty"></span>
+            </div>
+            <ul class="card-sheet__stats" id="card-header"></ul>
+            <p class="card-sheet__text" id="card-text"></p>
+        </article>
+        <div class="modal__actions card-modal__nav">
+            <button type="button" class="btn btn--small" id="card-prev" aria-label="Previous card">← PREV</button>
+            <button type="button" class="btn btn--small" id="card-next" aria-label="Next card">NEXT →</button>
+        </div>
+    </dialog>
+
     <!-- Connexion : masque l'application tant que l'utilisateur n'est pas connecté. -->
     <div class="login" id="login" hidden>
         <form class="panel login__panel" id="login-form" autocomplete="on">

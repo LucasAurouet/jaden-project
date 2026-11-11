@@ -42,6 +42,9 @@ class DeckCardOut(BaseModel):
     qty: int
     section: str
     frame_type: str
+    # Ligne de type compacte (decks.card_header) et texte officiel de la carte.
+    header: str
+    text: str
 
 class DeckOut(BaseModel):
     name: str

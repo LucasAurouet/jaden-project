@@ -11,6 +11,7 @@ const loginScreen = document.getElementById("login");
 const loginForm = document.getElementById("login-form");
 const deckDialog = document.getElementById("deck-dialog");
 const deckForm = document.getElementById("deck-form");
+const cardDialog = document.getElementById("card-dialog");
 
 // Écran d'accueil d'une conversation vide, recopié à chaque nouvelle discussion.
 const bootTemplate = document.getElementById("boot").cloneNode(true);
@@ -314,6 +315,8 @@ function renderDeck(deck, unresolved = []) {
     const view = document.getElementById("deck-view");
     const importBtn = document.getElementById("deck-import-btn");
     const meta = document.getElementById("deck-meta");
+    deckCards = [];
+    if (cardDialog.open) cardDialog.close();
     if (!deck) {
         view.hidden = true;
         meta.textContent = "";
@@ -354,11 +357,71 @@ function renderDeck(deck, unresolved = []) {
             name.textContent = card.name;
             name.title = card.name;
             li.append(qty, name);
+            // Ouvre la fiche de la carte dans une fenêtre modale.
+            const index = deckCards.length;
+            deckCards.push(card);
+            li.tabIndex = 0;
+            li.setAttribute("role", "button");
+            li.addEventListener("click", () => openCardDialog(index));
+            li.addEventListener("keydown", (e) => {
+                if (e.key === "Enter" || e.key === " ") {
+                    e.preventDefault();
+                    openCardDialog(index);
+                }
+            });
             items.push(li);
         }
     }
     document.getElementById("deck-list").replaceChildren(...items);
 }
+
+// ─── FICHE DE CARTE ─────────────────────────────────────────────────────────
+// Cartes du deck dans l'ordre de la liste (sections Main, Extra, Side), pour
+// passer de l'une à l'autre avec ← et →.
+let deckCards = [];
+let cardIndex = 0;
+
+function openCardDialog(index) {
+    showCard(index);
+    if (!cardDialog.open) cardDialog.showModal();
+}
+
+function showCard(index) {
+    if (deckCards.length === 0) return;
+    cardIndex = (index + deckCards.length) % deckCards.length;
+    const card = deckCards[cardIndex];
+    const section = DECK_SECTIONS.find(([key]) => key === card.section);
+
+    document.getElementById("card-section").textContent = section ? section[1] : "";
+    document.getElementById("card-position").textContent = `${cardIndex + 1} / ${deckCards.length}`;
+    document.getElementById("card-sheet").dataset.frame = card.frame_type.split("_")[0];
+    document.getElementById("card-name").textContent = card.name;
+    document.getElementById("card-qty").textContent = `${card.qty}×`;
+    // card.header : « Effect Monster | DARK | Spellcaster | Level 4 | ATK 1800 | DEF 1000 »
+    const stats = card.header.split(" | ").map(part => {
+        const li = document.createElement("li");
+        li.textContent = part;
+        return li;
+    });
+    document.getElementById("card-header").replaceChildren(...stats);
+    document.getElementById("card-text").textContent = card.text;
+
+    const single = deckCards.length < 2;
+    document.getElementById("card-prev").disabled = single;
+    document.getElementById("card-next").disabled = single;
+}
+
+cardDialog.addEventListener("keydown", (e) => {
+    if (e.key === "ArrowLeft") { e.preventDefault(); showCard(cardIndex - 1); }
+    else if (e.key === "ArrowRight") { e.preventDefault(); showCard(cardIndex + 1); }
+});
+// Un clic sur le fond (hors de la fenêtre) la ferme.
+cardDialog.addEventListener("click", (e) => {
+    if (e.target === cardDialog) cardDialog.close();
+});
+document.getElementById("card-close").addEventListener("click", () => cardDialog.close());
+document.getElementById("card-prev").addEventListener("click", () => showCard(cardIndex - 1));
+document.getElementById("card-next").addEventListener("click", () => showCard(cardIndex + 1));
 
 function openDeckDialog() {
     deckForm.reset();

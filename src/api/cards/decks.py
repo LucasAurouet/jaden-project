@@ -48,6 +48,9 @@ class Deck:
                     "id": c["card_id"], "qty": c["qty"], "section": c["section"],
                     "name": self.data[c["card_id"]]["name"],
                     "frame_type": self.data[c["card_id"]]["frame_type"],
+                    # Pour la fenêtre de carte du client (version texte, sans image).
+                    "header": card_header(self.data[c["card_id"]]),
+                    "text": self.data[c["card_id"]]["description"].replace("\r", "").strip(),
                 }
                 for c in self.cards
             ],
