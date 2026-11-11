@@ -31,7 +31,8 @@ python main.py server                # backend on BIND_HOST:SERVER_PORT (default
 python main.py client                # web UI on http://127.0.0.1:CLIENT_PORT (default 8090)
 python main.py adduser <name> [--admin]   # create an account (also: passwd <name>, deluser <name>)
 python main.py index <file>...       # index reference documents for the RAG (also: documents, unindex <id>)
-python main.py sync-cards [--force]  # update the card database from YGOPRODeck (skipped if its version is unchanged)
+python main.py sync-cards            # update the card database from YGOPRODeck, then embed new/changed cards
+                                     # (--force: re-download, --embed-only: embed only, --reembed: after a model change)
 pwsh scripts/start-llama.ps1         # dev only: starts the chat + embeddings llama-server instances
 ```
 
@@ -84,6 +85,7 @@ browser (src/client/static, vanilla JS) ──/api/*──▶ client (src/client
 - **Metrics**: `/v1/metrics/all` combines psutil/NVML system stats with llama-server's Prometheus `/metrics`. The llama-server stats are empty for other providers. The chat llama-server must run with `--jinja` (tool calling) and `--metrics`.
 - Shared Pydantic models live in `src/schemas.py`.
 - **Card database** (Yu-Gi-Oh-specific code lives in `src/api/cards/`): `sync.py` downloads all cards from YGOPRODeck in English and French (3 requests, skipped when `checkDBVer` is unchanged, stored in `sync_state`) and replaces the data in one transaction. Skill cards and tokens are left out. `cards` holds one row per card (API codes such as `type`/`race`/`attribute` stay in English, `atk`/`def` = -1 means "?", the full API answer minus prices is in `raw`). `card_artworks` maps every artwork id (`.ydk` files may use them) to its card. The French translation is matched by any artwork id, then by English name, because both languages do not always pick the same main id. Name lookup uses `pg_trgm` on `name_key_en`/`name_key_fr` (normalized by `cards/text.py`: lowercase, no accents or punctuation); in SQL, wrap comparisons on the nullable `name_key_fr` in `coalesce`, or NULLs sort first. Effects are searchable through the generated `search_en`/`search_fr` tsvectors. The model is given English effect texts (precise PSCT wording) and both names.
+- **Card search** (`cards/repository.py`): `find_by_name` (trigrams, exact name first), `get_by_ids` (artwork ids), `get_archetype`/`find_archetypes`, and `search_cards`: structured `CardFilters` are applied in SQL first (embeddings confuse "level 4" and "level 7"), then the remaining cards are ranked by RRF fusion of a vector search and a BM25 search. `cards.embedding` (bge-m3, `cards/embed.py`: name + type line + English effect) has no HNSW index on purpose: an exact scan of ~15k vectors is fast and always honours the filters. `embedding_hash` lets `sync-cards` re-embed only changed cards; if the embedding provider is down, the sync still updates the cards and `search_cards` falls back to BM25 alone. BM25 runs only in the language guessed from the query (`text.guess_language`), both if unsure: an English query searched in French texts gets absurd IDF weights for words like "your".
 
 ## Référence
 - ~/hdd/open-webui (v0.12.3) est une référence de conception, en lecture seule.

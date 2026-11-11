@@ -10,7 +10,10 @@ USAGE = """Usage: python main.py <commande>
   index <fichier>...         indexe des documents de référence (RAG), visibles de tous
   documents                  liste les documents indexés
   unindex <id>               retire un document de l'index
-  sync-cards [--force]       met à jour la base de cartes depuis YGOPRODeck""".format(port=CLIENT_PORT)
+  sync-cards [options]       met à jour la base de cartes depuis YGOPRODeck et la vectorise
+                               --force : retélécharge même si la version n'a pas changé
+                               --embed-only : vectorise seulement (cartes sans vecteur à jour)
+                               --reembed : revectorise tout (après un changement de modèle)""".format(port=CLIENT_PORT)
 
 
 async def manage_users(command: str, args: list[str]) -> int:
@@ -98,17 +101,30 @@ async def manage_documents(command: str, args: list[str]) -> int:
 
 
 async def sync_cards(args: list[str]) -> int:
-    """Base de cartes : copie locale de l'API YGOPRODeck."""
+    """
+    Base de cartes : copie locale de l'API YGOPRODeck, puis vectorisation des
+    cartes nouvelles ou modifiées. Sans fournisseur d'embeddings, les cartes
+    sont tout de même mises à jour : relancer avec --embed-only plus tard.
+    """
+    from src.api.cards.embed import embed_cards
     from src.api.cards.sync import SyncError, sync_cards as run_sync
-    from src.api.services import database
+    from src.api.services import database, embeddings
+    from src.api.services.embeddings import EmbeddingError
 
     await database.init_db()
+    await embeddings.start_client()
     try:
-        await run_sync(force="--force" in args)
+        if "--embed-only" not in args:
+            await run_sync(force="--force" in args)
+        await embed_cards(reembed="--reembed" in args)
     except SyncError as e:
         print(f"Erreur : {e}")
         return 1
+    except EmbeddingError as e:
+        print(f"Vectorisation incomplète : {e}\nRelancer python main.py sync-cards --embed-only une fois le fournisseur disponible.")
+        return 1
     finally:
+        await embeddings.stop_client()
         await database.close_db()
     return 0
 
