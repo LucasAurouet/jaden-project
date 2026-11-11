@@ -3,35 +3,32 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>JADEN // TERMINAL</title>
+    <title>Jaden — Codex</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Courier+Prime:ital,wght@0,400;0,700;1,400&family=Michroma&family=Orbitron:wght@500;700;900&family=Zen+Dots&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;700&family=Spectral:ital,wght@0,400;0,600;1,400&family=JetBrains+Mono:wght@500&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="/static/highlight.min.css">
     <link rel="stylesheet" href="/static/style.css">
 </head>
 <body>
 
-    <!-- Couche CRT : scanlines, vignette, balayage. Purement décorative. -->
-    <div class="crt" aria-hidden="true"></div>
-
     <div class="app">
 
         <header class="topbar">
             <div class="brand">
-                <svg class="brand__mark" width="38" height="38" viewBox="0 0 40 40" fill="none" aria-hidden="true">
-                    <polygon points="20,2 36,11 36,29 20,38 4,29 4,11" stroke="currentColor" stroke-width="1.2"/>
-                    <polygon points="20,9 30,14.5 30,25.5 20,31 10,25.5 10,14.5" stroke="currentColor" stroke-width="0.6" stroke-dasharray="2 2"/>
-                    <circle cx="20" cy="20" r="4" fill="currentColor"/>
-                    <circle cx="20" cy="20" r="7.5" stroke="currentColor" stroke-width="0.6" opacity="0.6"/>
+                <svg class="brand__mark" width="36" height="36" viewBox="0 0 40 40" fill="none" stroke="currentColor" aria-hidden="true">
+                    <circle cx="20" cy="20" r="18" stroke-width="1"/>
+                    <path d="M20 4 L34 28 L6 28 Z" stroke-width="1"/>
+                    <path d="M20 36 L6 12 L34 12 Z" stroke-width="0.6" opacity="0.6"/>
+                    <circle cx="20" cy="20" r="3.5" fill="currentColor" stroke="none"/>
                 </svg>
                 <div class="brand__text">
                     <span class="brand__name">JADEN</span>
-                    <span class="brand__tag">SOVEREIGN AI · LOCAL NODE</span>
+                    <span class="brand__tag">a codex of cards, rules and combos</span>
                 </div>
             </div>
 
-            <div class="hazard" aria-hidden="true"></div>
+            <div class="ornament" aria-hidden="true"></div>
 
             <div class="topbar__status">
                 <span class="link" id="link-status" data-state="pending">
@@ -51,7 +48,7 @@
             <!-- métriques du serveur GPU -->
             <section class="panel panel--monitor" aria-label="System monitor">
                 <header class="panel__head">
-                    <span class="panel__idx">01</span>
+                    <span class="panel__idx">I</span>
                     <span class="panel__title">MONITOR</span>
                     <span class="panel__meta">SRV·GPU</span>
                 </header>
@@ -104,25 +101,36 @@
             <!-- Terminal de dialogue -->
             <section class="panel panel--terminal" aria-label="Dialog">
                 <header class="panel__head">
-                    <span class="panel__idx">02</span>
-                    <span class="panel__title">TERMINAL·DIALOG</span>
+                    <span class="panel__idx">II</span>
+                    <span class="panel__title">THE CODEX</span>
                     <span class="panel__meta" id="msg-counter">00 EXCHANGE</span>
                 </header>
 
+                <!-- Cercle d'invocation décoratif -->
+                <svg class="sigil" viewBox="0 0 200 200" fill="none" stroke="currentColor" aria-hidden="true">
+                    <circle cx="100" cy="100" r="96" stroke-width="0.6"/>
+                    <circle cx="100" cy="100" r="88" stroke-width="0.3"/>
+                    <circle cx="100" cy="100" r="60" stroke-width="0.4"/>
+                    <polygon points="100,12 176,144 24,144" stroke-width="0.5"/>
+                    <polygon points="100,188 24,56 176,56" stroke-width="0.5"/>
+                    <circle cx="100" cy="100" r="22" stroke-width="0.5"/>
+                    <path d="M100 4 L100 196 M4 100 L196 100" stroke-width="0.2"/>
+                </svg>
+
                 <div id="chat-box" class="chat" aria-live="polite">
                     <div class="boot" id="boot">
-                        <p class="boot__title">JADEN//SYS — BOOT SEQUENCE</p>
+                        <p class="boot__title">THE CODEX AWAKENS</p>
                         <p>&gt; LOCAL MEMORY <span class="boot__dots"></span> <span class="ok">OK</span></p>
                         <p>&gt; DOCUMENT BASE <span class="boot__dots"></span> <span class="ok">INDEXED</span></p>
                         <p>&gt; INFERENCE LINK <span class="boot__dots"></span> <span id="boot-link" class="wait">PENDING</span></p>
-                        <p class="boot__note">No data leaves this network. Enter a request to begin.</p>
+                        <p class="boot__note">Ask about a card, a deck or a combo to begin.</p>
                     </div>
                 </div>
 
                 <form class="prompt" id="prompt-form" autocomplete="off">
-                    <span class="prompt__sign" aria-hidden="true">&gt;_</span>
-                    <input type="text" id="user-input" placeholder="ENTER A REQUEST" aria-label="Message">
-                    <button type="submit" class="btn btn--primary" id="send-btn">TRANSMIT</button>
+                    <span class="prompt__sign" aria-hidden="true">✦</span>
+                    <input type="text" id="user-input" placeholder="Ask the codex about a card, a deck or a combo…" aria-label="Message">
+                    <button type="submit" class="btn btn--primary" id="send-btn">INVOKE</button>
                 </form>
             </section>
 
@@ -131,12 +139,12 @@
             <!-- Conversations de l'utilisateur -->
             <aside class="panel panel--sessions" aria-label="Conversations">
                 <header class="panel__head">
-                    <span class="panel__idx">03</span>
-                    <span class="panel__title">CONVERSATIONS</span>
+                    <span class="panel__idx">III</span>
+                    <span class="panel__title">CHRONICLE</span>
                 </header>
 
                 <div class="upload">
-                    <button class="btn btn--ghost" id="new-session-btn">+ NEW CONVERSATION</button>
+                    <button class="btn btn--ghost" id="new-session-btn">+ NEW INVOCATION</button>
                 </div>
 
                 <div class="files">

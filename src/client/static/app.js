@@ -407,7 +407,7 @@ function createStreamingReply() {
 }
 
 
-const SENDER_LABEL = { user: "OPERATOR", assistant: "JADEN", error: "SYSTEM // ERROR" };
+const SENDER_LABEL = { user: "DUELIST", assistant: "JADEN", error: "THE CODEX FALTERS" };
 
 function createMessage(sender, date = new Date()) {
     document.getElementById("boot")?.remove();
