@@ -22,6 +22,18 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(title="Jaden Client", lifespan=lifespan)
 
+
+# Sans Cache-Control, le navigateur peut garder une ancienne version du front
+# (app.js, style.css) après une mise à jour. no-cache le force à revalider à
+# chaque chargement : le fichier n'est renvoyé que s'il a changé (sinon 304).
+@app.middleware("http")
+async def revalidate_front(request, call_next):
+    response = await call_next(request)
+    if request.url.path == "/" or request.url.path.startswith("/static/"):
+        response.headers["Cache-Control"] = "no-cache"
+    return response
+
+
 @app.get("/")
 async def root():
     return FileResponse(os.path.join(static_path, "index.html"))
