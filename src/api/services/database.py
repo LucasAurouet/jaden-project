@@ -57,18 +57,12 @@ USER_COLUMNS = "u.id, u.username, u.is_admin, u.created_at"
 
 
 async def create_user(username: str, password_hash: str, is_admin: bool) -> Dict[str, Any]:
-    """
-    Crée un compte (asyncpg.UniqueViolationError si le nom est pris). Le premier
-    admin récupère les sessions antérieures aux comptes, restées sans propriétaire.
-    """
-    async with _pool.acquire() as conn, conn.transaction():
-        row = await conn.fetchrow(
-            "INSERT INTO users AS u (username, password_hash, is_admin) VALUES ($1, $2, $3) "
-            f"RETURNING {USER_COLUMNS}",
-            username, password_hash, is_admin,
-        )
-        if is_admin:
-            await conn.execute("UPDATE sessions SET user_id = $1 WHERE user_id IS NULL", row["id"])
+    """Crée un compte (asyncpg.UniqueViolationError si le nom est pris)."""
+    row = await _pool.fetchrow(
+        "INSERT INTO users AS u (username, password_hash, is_admin) VALUES ($1, $2, $3) "
+        f"RETURNING {USER_COLUMNS}",
+        username, password_hash, is_admin,
+    )
     return dict(row)
 
 
@@ -92,7 +86,7 @@ async def set_password(username: str, password_hash: str) -> bool:
 
 
 async def delete_user(username: str) -> bool:
-    """Supprime le compte avec ses jetons, ses sessions et ses documents privés."""
+    """Supprime le compte avec ses jetons et ses sessions."""
     status = await _pool.execute("DELETE FROM users WHERE username = $1", username)
     return status != "DELETE 0"
 

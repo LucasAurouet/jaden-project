@@ -4,7 +4,7 @@ from config import BIND_HOST, SERVER_PORT, CLIENT_PORT
 USAGE = """Usage: python main.py <commande>
   server                     serveur d'inférence (machine GPU)
   client                     interface web sur http://127.0.0.1:{port}
-  adduser <nom> [--admin]    crée un compte (le premier admin récupère les conversations existantes)
+  adduser <nom> [--admin]    crée un compte
   passwd <nom>               change le mot de passe et déconnecte le compte partout
   deluser <nom>              supprime le compte et ses conversations
   index <fichier>...         indexe des documents de référence (RAG), visibles de tous
