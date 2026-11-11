@@ -4,7 +4,19 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project
 
-Homn Systems: a self-hosted personal assistant (LLM chat + tool calling + RAG). Python/FastAPI, two processes: an inference **server** (GPU machine or VPS) and a local web **client**. Code comments, docstrings and user-facing messages are written in French; keep that convention. Commit messages are in English and prefixed `feature:`, `fix:`, `hotfix:` or `refactor:`.
+**Jaden**: a natural-language assistant for Yu-Gi-Oh! that answers questions about cards, decks and combos. It is a reference and analysis tool, **not** a duel simulator: no game engine, no Konami assets (card art, UI, sounds).
+
+Jaden is a fork of **Maia / Homn Systems** (`upstream` remote = `git@github.com:LucasAurouet/maia.git`, branch `dev`): a self-hosted assistant (LLM chat + tool calling + RAG). Python/FastAPI, two processes: an inference **server** (GPU machine, local LLM through llama-server) and a web **client**. Generic improvements should be made in maia and merged here (`git fetch upstream && git merge upstream/dev`). Yu-Gi-Oh-specific code stays in this repo, kept apart from the inherited code where possible, to make those merges easy.
+
+Code comments, docstrings and user-facing messages are written in French; keep that convention. Commit messages are in English and prefixed `feature:`, `fix:`, `hotfix:` or `refactor:`.
+
+## Jaden roadmap (not built yet)
+
+- **Card database**: sync the public YGOPRODeck API (`https://db.ygoprodeck.com/api/v7/cardinfo.php`, plus banlist info) into Postgres tables (`cards`, `card_sets`, `banlist`…) through an Alembic migration and an ingestion command (`python main.py sync-cards`). Never call the API per user request. Respect its rate limits, and do not mirror card images in bulk: use the image URLs the API returns.
+- **Card tools** in `TOOLS` (`src/api/services/tools.py`): `search_cards` (structured filters: type, attribute, level/rank/link, race, archetype, ATK/DEF, plus full-text over the effect), `get_card`, `get_archetype`, `get_banlist`, `parse_decklist` (`.ydk` / plain text). Tool results are compact text, not raw JSON, because a local model's context is small.
+- **The model never states a card fact from memory**: effects, stats and banlist status always come from a tool. The system prompt enforces it. Combos are not in the API: the model reasons from the effect texts it fetched. Later, hand-written annotated combos can go into the RAG documents (shared, `owner_id` NULL).
+- **Local model constraints**: tool calling depends on the llama-server chat template (`--jinja`). Prefer few, well-described tools with flat parameters. `MAX_TOOL_ITERATIONS` (3) will probably need raising for multi-card questions.
+- **React frontend** (Vite + TypeScript, strict mode) replaces `src/client/static` (vanilla JS). The client FastAPI process stays the relay, auth cookie included, and serves the built bundle. The React app keeps talking to `/api/*` only. It adds a panel for the cards cited in an answer and a deck import.
 
 ## Commands
 

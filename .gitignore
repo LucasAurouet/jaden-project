@@ -26,3 +26,7 @@ logs/
 # Local
 .claude/settings.local.json
 todo.txt
+
+# Frontend (React)
+node_modules/
+dist/
