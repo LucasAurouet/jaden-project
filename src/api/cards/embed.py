@@ -18,13 +18,13 @@ WRITE_BATCH = 256
 
 def card_text(card: Dict[str, Any]) -> str:
     """
-    Texte vectorisé d'une carte : nom, ligne de type et effet en anglais. Les
+    Texte vectorisé d'une carte : nom, ligne de type et effet. Les
     champs absents (race d'un Lien...) sont simplement omis.
     """
     typeline = " / ".join(
         part for part in (card["human_type"] or card["type"], card["race"], card["attribute"]) if part
     )
-    return f"{card['name_en']}\n{typeline}\n{card['desc_en']}"
+    return f"{card['name']}\n{typeline}\n{card['description']}"
 
 
 def _hash(text: str) -> str:
@@ -41,7 +41,7 @@ async def embed_cards(reembed: bool = False, log: Callable[[str], None] = print)
     """
     pool = database.get_pool()
     rows = await pool.fetch("""
-        SELECT id, name_en, type, raw->>'humanReadableCardType' AS human_type, race, attribute, desc_en,
+        SELECT id, name, type, raw->>'humanReadableCardType' AS human_type, race, attribute, description,
                embedding_hash
         FROM cards ORDER BY id
     """)

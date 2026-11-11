@@ -9,13 +9,13 @@ from typing import Any, Dict, List
 import asyncpg
 
 from config import EMBEDDING_QUERY_PREFIX
-from src.api.cards.text import guess_language, normalize_name
+from src.api.cards.text import normalize_name
 from src.api.services import database
 from src.api.services.embeddings import embed, EmbeddingError
 
 # Colonnes renvoyées pour une carte (le reste est dans raw).
 CARD_FIELDS = """
-    c.id, c.name_en, c.name_fr, c.desc_en, c.desc_fr, c.type, c.frame_type, c.typeline, c.race,
+    c.id, c.name, c.description, c.type, c.frame_type, c.typeline, c.race,
     c.attribute, c.archetype, c.level, c.atk, c.def, c.scale, c.link_rating, c.link_markers,
     c.formats, c.md_rarity
 """
@@ -41,22 +41,18 @@ def _rows(rows: List[asyncpg.Record]) -> List[Dict[str, Any]]:
 
 async def find_by_name(name: str, limit: int = 5) -> List[Dict[str, Any]]:
     """
-    Cartes dont le nom (anglais ou français) ressemble le plus à name : nom
-    exact d'abord, puis par similarité de trigrammes. Tolère les accents, la
-    ponctuation, les fautes de frappe et l'ordre des mots.
+    Cartes dont le nom ressemble le plus à name : nom exact d'abord, puis par
+    similarité de trigrammes. Tolère la casse, la ponctuation, les fautes de
+    frappe et l'ordre des mots.
     """
     key = normalize_name(name)
     if not key:
         return []
-    # name_key_fr peut être NULL : sans coalesce, les NULL passeraient en tête du tri DESC.
     rows = await database.get_pool().fetch(f"""
-        SELECT {CARD_FIELDS},
-               coalesce(c.name_key_en = $1 OR c.name_key_fr = $1, false) AS exact,
-               greatest(similarity($1, c.name_key_en), similarity($1, coalesce(c.name_key_fr, ''))) AS score
+        SELECT {CARD_FIELDS}, c.name_key = $1 AS exact, similarity($1, c.name_key) AS score
         FROM cards c
-        WHERE c.name_key_en % $1 OR c.name_key_fr % $1
-           OR c.name_key_en LIKE '%' || $1 || '%' OR c.name_key_fr LIKE '%' || $1 || '%'
-        ORDER BY exact DESC, score DESC, length(c.name_en)
+        WHERE c.name_key % $1 OR c.name_key LIKE '%' || $1 || '%'
+        ORDER BY exact DESC, score DESC, length(c.name)
         LIMIT $2
     """, key, limit)
     return _rows(rows)
@@ -77,7 +73,7 @@ async def get_archetype(archetype: str, master_duel_only: bool = True) -> List[D
     rows = await database.get_pool().fetch(f"""
         SELECT {CARD_FIELDS} FROM cards c
         WHERE lower(c.archetype) = lower($1) AND (NOT $2 OR c.formats @> ARRAY[$3])
-        ORDER BY c.frame_type IN ('spell', 'trap'), c.frame_type, c.name_en
+        ORDER BY c.frame_type IN ('spell', 'trap'), c.frame_type, c.name
     """, archetype, master_duel_only, MASTER_DUEL)
     return _rows(rows)
 
@@ -178,60 +174,46 @@ BM25_K1 = 1.2
 BM25_B = 0.75
 
 
-def _bm25_sql(config: str, column: str, where: str, q: str) -> str:
+def _bm25_sql(where: str, q: str) -> str:
     """
-    Score BM25 de chaque carte filtrée pour la requête ${q}, sur le tsvector
-    column (configuration config). Il suffit qu'une carte contienne un des
-    termes : l'IDF donne leur poids aux termes rares (« Tuner » pèse plus que
-    « Deck » ou « hand », présents presque partout). Les statistiques portent
-    sur toute la base, pas seulement sur les cartes filtrées.
+    Score BM25 de chaque carte filtrée pour la requête ${q}, sur cards.search.
+    Il suffit qu'une carte contienne un des termes : l'IDF donne leur poids aux
+    termes rares (« Tuner » pèse plus que « Deck » ou « hand », présents presque
+    partout). Les statistiques portent sur toute la base, pas seulement sur les
+    cartes filtrées.
     """
+    terms = f"tsvector_to_array(to_tsvector('english', ${q}))"
     return f"""
         SELECT tf.id, sum(
             ln(1 + (stats.total - df.n + 0.5) / (df.n + 0.5))
             * tf.freq * ({BM25_K1} + 1) / (tf.freq + {BM25_K1} * (1 - {BM25_B} + {BM25_B} * tf.len / stats.avg_len))
         ) AS bm25
         FROM (
-            SELECT c.id, t.lexeme, cardinality(t.positions) AS freq, length(c.{column}) AS len
-            FROM cards c, unnest(c.{column}) t
+            SELECT c.id, t.lexeme, cardinality(t.positions) AS freq, length(c.search) AS len
+            FROM cards c, unnest(c.search) t
             WHERE {where}
-              AND c.{column} @@ replace(plainto_tsquery('{config}', ${q})::text, ' & ', ' | ')::tsquery
-              AND t.lexeme = ANY(tsvector_to_array(to_tsvector('{config}', ${q})))
+              AND c.search @@ replace(plainto_tsquery('english', ${q})::text, ' & ', ' | ')::tsquery
+              AND t.lexeme = ANY({terms})
         ) tf
         JOIN (
-            SELECT t.lexeme, count(*) AS n FROM cards c, unnest(c.{column}) t
-            WHERE t.lexeme = ANY(tsvector_to_array(to_tsvector('{config}', ${q})))
+            SELECT t.lexeme, count(*) AS n FROM cards c, unnest(c.search) t
+            WHERE t.lexeme = ANY({terms})
             GROUP BY t.lexeme
         ) df USING (lexeme)
-        CROSS JOIN (SELECT count(*) AS total, avg(length({column})) AS avg_len FROM cards) stats
+        CROSS JOIN (SELECT count(*) AS total, avg(length(search)) AS avg_len FROM cards) stats
         GROUP BY tf.id
     """
 
 
 async def _text_ranking(query: str, where: str, params: List[Any], n: int) -> List[int]:
-    """
-    Recherche plein texte (BM25) dans la langue de la requête, ou dans les deux
-    si on ne la devine pas (une carte garde alors son meilleur score). Chercher
-    une requête anglaise dans les textes français fausserait l'IDF : « your »
-    y est rarissime, donc surpondéré.
-    """
-    q = len(params) + 1
-    language = guess_language(query)
-    configs = [c for c in (("english", "search_en"), ("french", "search_fr")) if language in (None, c[0])]
+    """Recherche plein texte (BM25) sur les noms et les effets."""
     # Une requête faite uniquement de mots vides donne un tsquery vide : rien à chercher.
-    configs = [
-        (config, column) for config, column in configs
-        if await database.get_pool().fetchval(f"SELECT numnode(plainto_tsquery('{config}', $1))", query)
-    ]
-    if not configs:
+    if not await database.get_pool().fetchval("SELECT numnode(plainto_tsquery('english', $1))", query):
         return []
-    union = "\n            UNION ALL\n".join(_bm25_sql(config, column, where, str(q)) for config, column in configs)
+    q = len(params) + 1
     rows = await database.get_pool().fetch(f"""
-        SELECT id FROM (
-            {union}
-        ) scores
-        GROUP BY id
-        ORDER BY max(bm25) DESC
+        SELECT id FROM ({_bm25_sql(where, str(q))}) scores
+        ORDER BY bm25 DESC
         LIMIT ${q + 1}
     """, *params, query, n)
     return [row["id"] for row in rows]
@@ -240,7 +222,7 @@ async def _text_ranking(query: str, where: str, params: List[Any], n: int) -> Li
 async def search_cards(query: str | None, filters: CardFilters, limit: int = 10) -> Dict[str, Any]:
     """
     Cartes qui respectent les filtres, classées par pertinence pour query (en
-    langage naturel, français ou anglais) : fusion de la recherche vectorielle
+    langage naturel, en anglais) : fusion de la recherche vectorielle
     et plein texte. Sans query, par nom. Si le fournisseur d'embeddings est
     indisponible, seule la recherche plein texte classe les cartes.
     Renvoie {"cards": [...], "total": nombre de cartes qui respectent les filtres, "mode": ...}.
@@ -252,7 +234,7 @@ async def search_cards(query: str | None, filters: CardFilters, limit: int = 10)
 
     if not query or not query.strip():
         rows = await pool.fetch(
-            f"SELECT {CARD_FIELDS} FROM cards c WHERE {where} ORDER BY c.name_en LIMIT ${len(params) + 1}",
+            f"SELECT {CARD_FIELDS} FROM cards c WHERE {where} ORDER BY c.name LIMIT ${len(params) + 1}",
             *params, limit,
         )
         return {"cards": _rows(rows), "total": total, "mode": "filters"}

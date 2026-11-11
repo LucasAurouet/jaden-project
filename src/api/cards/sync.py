@@ -2,9 +2,9 @@
 Synchronisation de la base de cartes depuis l'API YGOPRODeck (python main.py sync-cards).
 
 Règles de l'API : 20 requêtes/s au plus (au-delà, blocage d'une heure) et
-données stockées localement. Une synchronisation complète ne fait que trois
-requêtes : la version de la base, puis toutes les cartes en anglais et en
-français. Les images ne sont pas téléchargées ici.
+données stockées localement. Une synchronisation complète ne fait que deux
+requêtes : la version de la base, puis toutes les cartes. Jaden ne gère que
+l'anglais. Les images ne sont pas téléchargées ici.
 """
 import asyncio
 import json
@@ -45,50 +45,25 @@ async def _get_json(client: httpx.AsyncClient, path: str, params: Dict[str, str]
         raise SyncError(f"Réponse de {path} illisible (JSON invalide).") from e
 
 
-async def _fetch_cards(client: httpx.AsyncClient, language: str | None) -> List[Dict[str, Any]]:
-    params = {"misc": "yes"}
-    if language:
-        params["language"] = language
-    data = await _get_json(client, "/cardinfo.php", params)
+async def _fetch_cards(client: httpx.AsyncClient) -> List[Dict[str, Any]]:
+    data = await _get_json(client, "/cardinfo.php", {"misc": "yes"})
     try:
         return data["data"]
     except (KeyError, TypeError) as e:
         raise SyncError("Réponse de cardinfo.php inattendue (pas de champ data).") from e
 
 
-def _translations(cards_en: List[Dict[str, Any]], cards_fr: List[Dict[str, Any]]) -> Dict[int, Dict[str, Any]]:
-    """
-    Traduction française de chaque carte anglaise, par id de carte. Pour une
-    carte à plusieurs artworks, les deux langues ne prennent pas toujours le même
-    id principal : on cherche aussi parmi les ids d'artwork, puis par nom anglais.
-    """
-    by_id = {card["id"]: card for card in cards_fr}
-    by_name = {card["name_en"]: card for card in cards_fr if card.get("name_en")}
-    translations = {}
-    for card in cards_en:
-        ids = [card["id"]] + [image["id"] for image in card.get("card_images") or []]
-        fr = next((by_id[i] for i in ids if i in by_id), None) or by_name.get(card["name"])
-        if fr:
-            translations[card["id"]] = fr
-    return translations
-
-
-def _card_row(card: Dict[str, Any], fr: Dict[str, Any] | None) -> tuple:
-    """Ligne de la table cards, à partir de la carte anglaise et de sa traduction."""
+def _card_row(card: Dict[str, Any]) -> tuple:
+    """Ligne de la table cards."""
     misc = (card.get("misc_info") or [{}])[0]
-    name_fr = fr.get("name") if fr else None
-    desc_fr = fr.get("desc") if fr else None
     # Les prix changent sans cesse et ne servent à rien ici.
     raw = {k: v for k, v in card.items() if k != "card_prices"}
     return (
         card["id"],
         misc.get("konami_id"),
         card["name"],
-        name_fr,
         normalize_name(card["name"]),
-        normalize_name(name_fr) if name_fr else None,
         card.get("desc") or "",
-        desc_fr,
         card["type"],
         card["frameType"],
         card.get("typeline") or [],
@@ -108,12 +83,12 @@ def _card_row(card: Dict[str, Any], fr: Dict[str, Any] | None) -> tuple:
 
 
 CARD_COLUMNS = (
-    "id, konami_id, name_en, name_fr, name_key_en, name_key_fr, desc_en, desc_fr, type, frame_type, typeline, "
+    "id, konami_id, name, name_key, description, type, frame_type, typeline, "
     "race, attribute, archetype, level, atk, def, scale, link_rating, link_markers, formats, md_rarity, raw"
 )
 UPSERT_CARD = f"""
     INSERT INTO cards ({CARD_COLUMNS}, updated_at)
-    VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23::jsonb, now())
+    VALUES ({", ".join(f"${i}" for i in range(1, 20))}, $20::jsonb, now())
     ON CONFLICT (id) DO UPDATE SET
     {", ".join(f"{c} = EXCLUDED.{c}" for c in CARD_COLUMNS.split(", ") if c != "id")},
     updated_at = now()
@@ -141,16 +116,12 @@ async def sync_cards(force: bool = False, log: Callable[[str], None] = print) ->
 
         log(f"Téléchargement des cartes (version YGOPRODeck {version}, locale {local or 'aucune'})…")
         await asyncio.sleep(REQUEST_PAUSE)
-        cards_en = await _fetch_cards(client, None)
-        log(f"  {len(cards_en)} cartes en anglais")
-        await asyncio.sleep(REQUEST_PAUSE)
-        cards_fr = await _fetch_cards(client, "fr")
-        log(f"  {len(cards_fr)} cartes en français")
+        all_cards = await _fetch_cards(client)
+        log(f"  {len(all_cards)} cartes téléchargées")
 
-    cards = [c for c in cards_en if c.get("frameType") not in EXCLUDED_FRAME_TYPES]
+    cards = [c for c in all_cards if c.get("frameType") not in EXCLUDED_FRAME_TYPES]
     try:
-        translations = _translations(cards, cards_fr)
-        rows = [_card_row(card, translations.get(card["id"])) for card in cards]
+        rows = [_card_row(card) for card in cards]
     except (KeyError, TypeError) as e:
         raise SyncError(f"Carte au format inattendu ({e}).") from e
     # Un id d'artwork déjà vu est ignoré : il ne doit désigner qu'une carte.
@@ -175,10 +146,9 @@ async def sync_cards(force: bool = False, log: Callable[[str], None] = print) ->
             VERSION_KEY, version,
         )
 
-    translated = sum(1 for row in rows if row[3])
     log(
-        f"{len(rows)} cartes enregistrées ({translated} traduites en français, "
-        f"{len(cards_en) - len(cards)} cartes Skill et jetons ignorés, {removed} retirées), "
+        f"{len(rows)} cartes enregistrées ({len(all_cards) - len(cards)} cartes Skill et jetons ignorés, "
+        f"{removed} retirées), "
         f"{len(artworks)} artworks."
     )
     return {"updated": True, "version": version, "cards": len(rows), "removed": removed}
