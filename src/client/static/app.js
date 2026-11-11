@@ -81,7 +81,7 @@ loginForm.addEventListener("submit", async (e) => {
         document.getElementById("login-password").value = "";
         await startApp(await response.json());
     } catch (err) {
-        error.textContent = "Client injoignable.";
+        error.textContent = "Client unreachable.";
     } finally {
         button.disabled = false;
     }
@@ -126,7 +126,7 @@ async function apiFetch(url, options) {
     const response = await fetch(url, options);
     if (response.status === 401 && currentUser) {
         showLogin();
-        throw new Error("Session expirée : reconnectez-vous.");
+        throw new Error("Session expired: please log in again.");
     }
     return response;
 }
@@ -149,7 +149,7 @@ const cssVar = (name) => getComputedStyle(document.documentElement).getPropertyV
 // Les erreurs FastAPI arrivent sous la forme {"detail": "..."}.
 async function errorMessage(response) {
     const data = await response.json().catch(() => null);
-    return data?.detail || `Erreur HTTP ${response.status}`;
+    return data?.detail || `HTTP error ${response.status}`;
 }
 
 // ─── CONVERSATIONS ──────────────────────────────────────────────────────────
@@ -162,7 +162,7 @@ function newId() {
 function setExchangeCount(count) {
     exchangeCount = count;
     document.getElementById("msg-counter").textContent =
-        `${pad(exchangeCount)} ÉCHANGE${exchangeCount > 1 ? 'S' : ''}`;
+        `${pad(exchangeCount)} EXCHANGE${exchangeCount > 1 ? 'S' : ''}`;
 }
 
 function resetChat() {
@@ -201,7 +201,7 @@ async function openSession(id) {
         setExchangeCount(messages.filter(m => m.role === "user").length);
         highlightSession();
     } catch (error) {
-        appendMessage(`Impossible d'ouvrir la conversation : ${error.message}`, "error");
+        appendMessage(`Cannot open the conversation: ${error.message}`, "error");
     }
 }
 
@@ -211,7 +211,7 @@ async function fetchSessions() {
         if (!response.ok) throw new Error(await errorMessage(response));
         renderSessions(await response.json());
     } catch (error) {
-        console.error("Impossible de récupérer les conversations :", error);
+        console.error("Cannot fetch the conversations:", error);
         const li = document.createElement("li");
         li.className = "documents-error";
         li.textContent = `✖ ${error.message}`;
@@ -220,7 +220,7 @@ async function fetchSessions() {
 }
 
 async function deleteSession(session, button) {
-    if (!confirm(`Supprimer la conversation « ${session.title} » ?`)) return;
+    if (!confirm(`Delete the conversation "${session.title}"?`)) return;
 
     button.disabled = true;
     try {
@@ -228,7 +228,7 @@ async function deleteSession(session, button) {
         if (!response.ok && response.status !== 404) throw new Error(await errorMessage(response));
         if (session.id === sessionId) newSession();
     } catch (error) {
-        alert(`Suppression impossible : ${error.message}`);
+        alert(`Cannot delete: ${error.message}`);
     }
     await fetchSessions();
 }
@@ -237,7 +237,7 @@ function renderSessions(sessions) {
     if (sessions.length === 0) {
         const li = document.createElement("li");
         li.className = "documents-empty";
-        li.textContent = "Aucune conversation";
+        li.textContent = "No conversation";
         sessionList.replaceChildren(li);
         return;
     }
@@ -258,8 +258,8 @@ function renderSessions(sessions) {
         const remove = document.createElement("button");
         remove.className = "document-delete";
         remove.textContent = "✕";
-        remove.title = "Supprimer cette conversation";
-        remove.setAttribute("aria-label", `Supprimer ${session.title}`);
+        remove.title = "Delete this conversation";
+        remove.setAttribute("aria-label", `Delete ${session.title}`);
         remove.addEventListener("click", (e) => {
             e.stopPropagation();
             deleteSession(session, remove);
@@ -308,7 +308,7 @@ async function sendMessage() {
             if (event.type === "delta") {
                 reply.append(event.content);
             } else if (event.type === "tool") {
-                reply.setStatus(`OUTIL // ${event.name}`);
+                reply.setStatus(`TOOL // ${event.name}`);
             } else if (event.type === "status") {
                 reply.setStatus(event.message);
             } else if (event.type === "error") {
@@ -327,7 +327,7 @@ async function sendMessage() {
             }
         }
         // Flux terminé sans "done" ni "error" : la connexion a été coupée.
-        reply.fail("Flux interrompu avant la fin de la réponse.");
+        reply.fail("Stream interrupted before the end of the answer.");
 
     } catch (error) {
         reply.fail(error.message);
@@ -383,7 +383,7 @@ function createStreamingReply() {
         chatBox.scrollTop = chatBox.scrollHeight;
     };
 
-    setStatus("TRAITEMENT EN COURS");
+    setStatus("PROCESSING");
 
     return {
         setStatus,
@@ -407,7 +407,7 @@ function createStreamingReply() {
 }
 
 
-const SENDER_LABEL = { user: "OPÉRATEUR", assistant: "JADEN", error: "SYSTÈME // ERREUR" };
+const SENDER_LABEL = { user: "OPERATOR", assistant: "JADEN", error: "SYSTEM // ERROR" };
 
 function createMessage(sender, date = new Date()) {
     document.getElementById("boot")?.remove();
@@ -505,7 +505,7 @@ function setLinkState(state, label) {
     const boot = document.getElementById("boot-link");
     if (boot) {
         boot.className = { ok: "ok", error: "err" }[state] ?? "wait";
-        boot.textContent = { ok: "ÉTABLIE", error: "ÉCHEC" }[state] ?? "EN ATTENTE";
+        boot.textContent = { ok: "ESTABLISHED", error: "FAILED" }[state] ?? "PENDING";
     }
 }
 
@@ -513,7 +513,7 @@ function formatUptime(seconds) {
     const s = Math.floor(seconds);
     const d = Math.floor(s / 86400);
     const hms = `${pad(Math.floor(s % 86400 / 3600))}:${pad(Math.floor(s % 3600 / 60))}:${pad(s % 60)}`;
-    return d > 0 ? `${d}j ${hms}` : hms;
+    return d > 0 ? `${d}d ${hms}` : hms;
 }
 
 async function updateMetrics() {
@@ -524,7 +524,7 @@ async function updateMetrics() {
         if (!response.ok) throw new Error(`HTTP ${response.status}`);
         data = await response.json();
     } catch (error) {
-        setLinkState("error", "CLIENT HORS LIGNE");
+        setLinkState("error", "CLIENT OFFLINE");
         return;
     }
 
@@ -532,9 +532,9 @@ async function updateMetrics() {
     const sys = data.system;
     const inf = data.inference;
     if (!sys) {
-        setLinkState("error", "SERVEUR INJOIGNABLE");
+        setLinkState("error", "SERVER UNREACHABLE");
     } else {
-        setLinkState("ok", "LIAISON ÉTABLIE");
+        setLinkState("ok", "LINK ESTABLISHED");
     }
 
     pushMetric(history.cpu,    sys?.cpu_percent);
@@ -553,7 +553,7 @@ async function updateMetrics() {
 
     const vramUsed = sys?.gpu_vram_used_mb, vramTotal = sys?.gpu_vram_total_mb;
     set('read-vram', vramUsed != null && vramTotal ? vramUsed : null,
-        v => `${(v / 1024).toFixed(1)}/${(vramTotal / 1024).toFixed(0)} Go`);
+        v => `${(v / 1024).toFixed(1)}/${(vramTotal / 1024).toFixed(0)} GB`);
     set('read-temp',   sys?.gpu_temp_c,        v => `${v.toFixed(0)} °C`);
     set('read-pp',     inf?.pp_tokens_per_sec, v => `${v.toFixed(0)} t/s`);
     set('read-uptime', sys?.uptime_seconds,    formatUptime);

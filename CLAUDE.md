@@ -8,7 +8,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 Jaden started from the skeleton of **Maia** (`upstream` remote = `git@github.com:LucasAurouet/maia.git`, branch `dev`): a self-hosted assistant (LLM chat + tool calling + RAG). Python/FastAPI, two processes: an inference **server** (GPU machine, local LLM through llama-server) and a web **client**. The two projects have diverged (squashed migrations, no document upload, renamed modules), so `upstream` is **not** merged: a useful maia fix is brought over with `git cherry-pick <commit>`, resolving conflicts by hand.
 
-**Cards and search are English only**: card names, effect texts, search queries and tool arguments. No other language is supported for now: do not add translations or multilingual search. Code comments, docstrings and user-facing messages are written in French; keep that convention. Commit messages are in English and prefixed `feature:`, `fix:`, `hotfix:` or `refactor:`.
+**Cards and search are English only**: card names, effect texts, search queries and tool arguments. No other language is supported for now: do not add translations or multilingual search. Everything the user sees is in English: the web interface, error messages, CLI output, the system prompt, the model's answers and tool descriptions. Code comments and docstrings are written in French; keep that convention. Commit messages are in English and prefixed `feature:`, `fix:`, `hotfix:` or `refactor:`.
 
 ## Jaden roadmap (not built yet)
 

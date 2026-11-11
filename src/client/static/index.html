@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="fr">
+<html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -27,7 +27,7 @@
                 </svg>
                 <div class="brand__text">
                     <span class="brand__name">JADEN</span>
-                    <span class="brand__tag">IA SOUVERAINE · NŒUD LOCAL</span>
+                    <span class="brand__tag">SOVEREIGN AI · LOCAL NODE</span>
                 </div>
             </div>
 
@@ -36,12 +36,12 @@
             <div class="topbar__status">
                 <span class="link" id="link-status" data-state="pending">
                     <span class="link__dot" aria-hidden="true"></span>
-                    <span id="link-text">LIAISON…</span>
+                    <span id="link-text">LINK…</span>
                 </span>
                 <span class="clock" id="clock">--:--:--</span>
                 <span class="user" id="user-box" hidden>
                     <span class="user__name" id="user-name"></span>
-                    <button class="btn btn--ghost btn--small" id="logout-btn">DÉCONNEXION</button>
+                    <button class="btn btn--ghost btn--small" id="logout-btn">LOG OUT</button>
                 </span>
             </div>
         </header>
@@ -49,10 +49,10 @@
         <main class="layout">
 
             <!-- métriques du serveur GPU -->
-            <section class="panel panel--monitor" aria-label="Moniteur système">
+            <section class="panel panel--monitor" aria-label="System monitor">
                 <header class="panel__head">
                     <span class="panel__idx">01</span>
-                    <span class="panel__title">MONITEUR</span>
+                    <span class="panel__title">MONITOR</span>
                     <span class="panel__meta">SRV·GPU</span>
                 </header>
 
@@ -80,7 +80,7 @@
                     </div>
                     <div class="gauge" style="--c: var(--green)">
                         <div class="gauge__head">
-                            <span class="gauge__label">GÉNÉRATION</span>
+                            <span class="gauge__label">GENERATION</span>
                             <span class="gauge__value" id="stat-tokens">—</span>
                         </div>
                         <div class="scope"><canvas id="chart-tokens"></canvas></div>
@@ -90,39 +90,39 @@
                 <dl class="readouts">
                     <div><dt>VRAM</dt><dd id="read-vram">—</dd></div>
                     <div><dt>TEMP·GPU</dt><dd id="read-temp">—</dd></div>
-                    <div><dt>LECTURE</dt><dd id="read-pp">—</dd></div>
+                    <div><dt>PROMPT</dt><dd id="read-pp">—</dd></div>
                     <div><dt>UPTIME</dt><dd id="read-uptime">—</dd></div>
                 </dl>
 
                 <dl class="specs">
-                    <div><dt>MODÈLE</dt><dd>QWEN·2.5·CODER·7B</dd></div>
-                    <div><dt>MOTEUR</dt><dd>LLAMA·CPP</dd></div>
-                    <div><dt>MODE</dt><dd class="live">LOCAL·SOUVERAIN</dd></div>
+                    <div><dt>MODEL</dt><dd>QWEN·2.5·CODER·7B</dd></div>
+                    <div><dt>ENGINE</dt><dd>LLAMA·CPP</dd></div>
+                    <div><dt>MODE</dt><dd class="live">LOCAL·SOVEREIGN</dd></div>
                 </dl>
             </section>
 
             <!-- Terminal de dialogue -->
-            <section class="panel panel--terminal" aria-label="Dialogue">
+            <section class="panel panel--terminal" aria-label="Dialog">
                 <header class="panel__head">
                     <span class="panel__idx">02</span>
-                    <span class="panel__title">TERMINAL·DIALOGUE</span>
-                    <span class="panel__meta" id="msg-counter">00 ÉCHANGE</span>
+                    <span class="panel__title">TERMINAL·DIALOG</span>
+                    <span class="panel__meta" id="msg-counter">00 EXCHANGE</span>
                 </header>
 
                 <div id="chat-box" class="chat" aria-live="polite">
                     <div class="boot" id="boot">
-                        <p class="boot__title">JADEN//SYS — SÉQUENCE D'INITIALISATION</p>
-                        <p>&gt; MÉMOIRE LOCALE <span class="boot__dots"></span> <span class="ok">OK</span></p>
-                        <p>&gt; BASE DOCUMENTAIRE <span class="boot__dots"></span> <span class="ok">INDEXÉE</span></p>
-                        <p>&gt; LIAISON INFÉRENCE <span class="boot__dots"></span> <span id="boot-link" class="wait">EN ATTENTE</span></p>
-                        <p class="boot__note">Aucune donnée ne quitte ce réseau. Entrez une requête pour commencer.</p>
+                        <p class="boot__title">JADEN//SYS — BOOT SEQUENCE</p>
+                        <p>&gt; LOCAL MEMORY <span class="boot__dots"></span> <span class="ok">OK</span></p>
+                        <p>&gt; DOCUMENT BASE <span class="boot__dots"></span> <span class="ok">INDEXED</span></p>
+                        <p>&gt; INFERENCE LINK <span class="boot__dots"></span> <span id="boot-link" class="wait">PENDING</span></p>
+                        <p class="boot__note">No data leaves this network. Enter a request to begin.</p>
                     </div>
                 </div>
 
                 <form class="prompt" id="prompt-form" autocomplete="off">
                     <span class="prompt__sign" aria-hidden="true">&gt;_</span>
-                    <input type="text" id="user-input" placeholder="ENTRER UNE REQUÊTE" aria-label="Message">
-                    <button type="submit" class="btn btn--primary" id="send-btn">TRANSMETTRE</button>
+                    <input type="text" id="user-input" placeholder="ENTER A REQUEST" aria-label="Message">
+                    <button type="submit" class="btn btn--primary" id="send-btn">TRANSMIT</button>
                 </form>
             </section>
 
@@ -136,7 +136,7 @@
                 </header>
 
                 <div class="upload">
-                    <button class="btn btn--ghost" id="new-session-btn">+ NOUVELLE DISCUSSION</button>
+                    <button class="btn btn--ghost" id="new-session-btn">+ NEW CONVERSATION</button>
                 </div>
 
                 <div class="files">
@@ -158,15 +158,15 @@
             </header>
             <div class="login__body">
                 <label class="login__field">
-                    <span>IDENTIFIANT</span>
+                    <span>USERNAME</span>
                     <input type="text" id="login-username" name="username" autocomplete="username" required>
                 </label>
                 <label class="login__field">
-                    <span>MOT DE PASSE</span>
+                    <span>PASSWORD</span>
                     <input type="password" id="login-password" name="password" autocomplete="current-password" required>
                 </label>
                 <span class="login__error" id="login-error" role="alert"></span>
-                <button type="submit" class="btn btn--primary" id="login-btn">CONNEXION</button>
+                <button type="submit" class="btn btn--primary" id="login-btn">LOG IN</button>
             </div>
         </form>
     </div>
