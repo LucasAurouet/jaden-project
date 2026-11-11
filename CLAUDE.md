@@ -12,9 +12,14 @@ Code comments, docstrings and user-facing messages are written in French; keep t
 
 ## Jaden roadmap (not built yet)
 
-- **Card database**: sync the public YGOPRODeck API (`https://db.ygoprodeck.com/api/v7/cardinfo.php`, plus banlist info) into Postgres tables (`cards`, `card_sets`, `banlist`…) through an Alembic migration and an ingestion command (`python main.py sync-cards`). Never call the API per user request. Respect its rate limits, and do not mirror card images in bulk: use the image URLs the API returns.
-- **Card tools** in `TOOLS` (`src/api/services/tools.py`): `search_cards` (structured filters: type, attribute, level/rank/link, race, archetype, ATK/DEF, plus full-text over the effect), `get_card`, `get_archetype`, `get_banlist`, `parse_decklist` (`.ydk` / plain text). Tool results are compact text, not raw JSON, because a local model's context is small.
-- **The model never states a card fact from memory**: effects, stats and banlist status always come from a tool. The system prompt enforces it. Combos are not in the API: the model reasons from the effect texts it fetched. Later, hand-written annotated combos can be indexed as RAG documents (`python main.py index`).
+**Audience**: a casual player and fan of the anime, not a competitive one. Priorities: understanding cards, rules and how a deck plays. Banlists, the current meta and tournament data are out of scope for now.
+
+1. **Card database**: sync the public YGOPRODeck API (`https://db.ygoprodeck.com/api/v7/`, English + French) into Postgres through an Alembic migration and an ingestion command (`python main.py sync-cards`). Never call the API per user request. Its rules: 20 requests/s max (exceeding it means a 1-hour block), store all data locally, and **download each card image once and serve it ourselves**: hotlinking `images.ygoprodeck.com` gets the IP blacklisted. Alternate artworks have their own ids, which `.ydk` files may use.
+2. **Card tools** in `TOOLS` (`src/api/services/tools.py`): `search_cards` (structured filters: type, attribute, level/rank/link, race, archetype, ATK/DEF, plus full-text over the effect), `get_card`, `get_archetype`, `parse_decklist` (`.ydk` / plain text). Tool results are compact text, not raw JSON, because a local model's context is small.
+3. **Rules RAG**: a small, clean corpus explaining the game rules (chains, summon mechanics, timing), indexed with `python main.py index`.
+4. **Anime RAG** (optional): characters, their decks, anime-only cards. Yugipedia is CC BY-SA: usable with attribution.
+
+- **The model never states a card fact from memory**: effects and stats always come from a tool. The system prompt enforces it. Combos are not in the API: the model reasons from the effect texts it fetched. Hand-written combo notes can be indexed as RAG documents.
 - **Local model constraints**: tool calling depends on the llama-server chat template (`--jinja`). Prefer few, well-described tools with flat parameters. `MAX_TOOL_ITERATIONS` (3) will probably need raising for multi-card questions.
 - **React frontend** (Vite + TypeScript, strict mode) replaces `src/client/static` (vanilla JS). The client FastAPI process stays the relay, auth cookie included, and serves the built bundle. The React app keeps talking to `/api/*` only. It adds a panel for the cards cited in an answer and a deck import.
 
