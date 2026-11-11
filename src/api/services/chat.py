@@ -8,7 +8,7 @@ from src.api.services.tools import TOOL_SCHEMAS, execute_tool
 
 SYSTEM_PROMPT = (
     "Tu es Homn, un assistant personnel. "
-    "L'utilisateur peut t'avoir fourni des documents : utilise le tool search_documents "
+    "Des documents de référence sont indexés : utilise le tool search_documents "
     "dès que la question peut s'y rapporter, et cite la source des passages utilisés. "
     "Des passages trouvés automatiquement peuvent être joints au message de l'utilisateur : "
     "ignore-les s'ils sont hors sujet, et utilise search_documents s'ils ne suffisent pas."
@@ -133,7 +133,7 @@ class ChatService:
         # Ils ne sont pas enregistrés : seul le prompt brut l'est.
         question = prompt
         if RAG_AUTO_SEARCH:
-            passages = await auto_search(prompt, user_id)
+            passages = await auto_search(prompt)
             if passages:
                 yield _sse({"type": "status", "message": f"{len(passages)} passage(s) trouvé(s) dans les documents"})
                 question += (

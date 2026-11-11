@@ -8,8 +8,7 @@ from config import EMBEDDING_PASSAGE_PREFIX, EMBEDDING_QUERY_PREFIX, RAG_AUTO_MI
 from src.api.services import database
 from src.api.services.embeddings import embed, EmbeddingError
 
-ALLOWED_EXTENSIONS = {".txt", ".md", ".py", ".js", ".json", ".html", ".css", ".csv", ".xml", ".ini", ".yaml", ".yml"}
-MAX_UPLOAD_SIZE = 512 * 1024
+ALLOWED_EXTENSIONS = {".txt", ".md", ".json", ".html", ".csv", ".xml", ".yaml", ".yml"}
 
 # Taille des passages, en caractères (~300 à 400 tokens).
 CHUNK_SIZE = 1500
@@ -59,11 +58,8 @@ def chunk_text(text: str) -> List[str]:
     return chunks
 
 
-async def ingest(owner_id: int | None, user_id: int, filename: str, content: bytes) -> Dict[str, Any]:
-    """
-    Découpe, vectorise et indexe un fichier texte envoyé par l'utilisateur
-    user_id, en privé (owner_id = user_id) ou en partagé (owner_id None).
-    """
+async def ingest(filename: str, content: bytes) -> Dict[str, Any]:
+    """Découpe, vectorise et indexe un document de référence, visible de tous."""
     name = os.path.basename(filename or "")
     if not name or name.startswith("."):
         raise DocumentError("Nom de fichier invalide.")
@@ -71,18 +67,13 @@ async def ingest(owner_id: int | None, user_id: int, filename: str, content: byt
         raise DocumentError(
             f"Format non pris en charge. Formats autorisés : {', '.join(sorted(ALLOWED_EXTENSIONS))}"
         )
-    if len(content) > MAX_UPLOAD_SIZE:
-        raise DocumentError(f"Fichier trop volumineux (max {MAX_UPLOAD_SIZE // 1024} Ko).")
 
     # Vérifié avant les embeddings, pour ne pas les calculer pour rien. Seul le
     # contenu compte : deux fichiers de même nom mais différents sont gardés.
-    # Parmi les documents visibles : un fichier déjà partagé n'a pas à être
-    # réindexé en privé.
     sha256 = hashlib.sha256(content).hexdigest()
-    existing = await database.find_visible_document_by_hash(sha256, user_id)
+    existing = await database.find_document_by_hash(sha256)
     if existing:
-        where = "dans les documents partagés" if existing["shared"] else "dans vos documents"
-        raise DuplicateDocument(f"Ce fichier est déjà indexé {where} (sous le nom {existing['source']}).")
+        raise DuplicateDocument(f"Ce fichier est déjà indexé (sous le nom {existing['source']}).")
 
     try:
         text = content.decode("utf-8")
@@ -96,9 +87,9 @@ async def ingest(owner_id: int | None, user_id: int, filename: str, content: byt
     # Le préfixe ne sert qu'au vecteur : content (affichage, BM25) reste le texte brut.
     embeddings = await embed([EMBEDDING_PASSAGE_PREFIX + chunk for chunk in chunks])
     try:
-        return await database.insert_document(owner_id, name, sha256, chunks, embeddings)
+        return await database.insert_document(name, sha256, chunks, embeddings)
     except asyncpg.UniqueViolationError:
-        # Même fichier envoyé deux fois en même temps : l'index unique tranche.
+        # Même fichier indexé deux fois en même temps : l'index unique tranche.
         raise DuplicateDocument("Ce fichier est déjà indexé.")
 
 
@@ -120,26 +111,25 @@ def _fuse(*rankings: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
     return sorted(fused.values(), key=lambda r: r["rrf"], reverse=True)
 
 
-async def search(query: str, k: int, user_id: int) -> List[Dict[str, Any]]:
+async def search(query: str, k: int) -> List[Dict[str, Any]]:
     """
-    Les k passages les plus pertinents parmi les documents visibles par
-    l'utilisateur (les siens et les partagés), du plus au moins pertinent. En mode
+    Les k passages les plus pertinents, du plus au moins pertinent. En mode
     hybride, fusionne la recherche vectorielle et BM25 (mots-clés : noms propres,
     identifiants, termes rares que les embeddings rapprochent mal). Chaque
     passage a son score cosinus (score) et, s'il a été trouvé par BM25, bm25.
     """
     [embedding] = await embed([EMBEDDING_QUERY_PREFIX + query])
     if not RAG_HYBRID_SEARCH:
-        return await database.search_chunks(embedding, k, user_id)
+        return await database.search_chunks(embedding, k)
     n = max(4 * k, MIN_CANDIDATES)
     vector, lexical = await asyncio.gather(
-        database.search_chunks(embedding, n, user_id),
-        database.search_chunks_bm25(query, embedding, n, user_id),
+        database.search_chunks(embedding, n),
+        database.search_chunks_bm25(query, embedding, n),
     )
     return _fuse(vector, lexical)[:k]
 
 
-async def auto_search(query: str, user_id: int) -> List[Dict[str, Any]]:
+async def auto_search(query: str) -> List[Dict[str, Any]]:
     """
     Recherche automatique faite avant chaque réponse. Ne lève jamais : un
     fournisseur d'embeddings ou une base indisponible ne doit pas bloquer le chat.
@@ -147,7 +137,7 @@ async def auto_search(query: str, user_id: int) -> List[Dict[str, Any]]:
     BM25 élargit les candidats et influe sur leur ordre, sans exempter du seuil.
     """
     try:
-        candidates = await search(query, MIN_CANDIDATES, user_id)
+        candidates = await search(query, MIN_CANDIDATES)
     except (EmbeddingError, OSError, asyncpg.PostgresError):
         return []
     return [r for r in candidates if r["score"] >= RAG_AUTO_MIN_SCORE][:AUTO_SEARCH_RESULTS]

@@ -11,8 +11,6 @@ from config import DATABASE_URL, EMBEDDING_DIM
 ALEMBIC_INI = Path(__file__).resolve().parents[3] / "alembic.ini"
 
 _pool: asyncpg.Pool | None = None
-# hnsw.iterative_scan existe depuis pgvector 0.8 (voir search_chunks).
-_iterative_scan = False
 
 
 class DatabaseError(Exception):
@@ -27,7 +25,7 @@ def _upgrade_schema():
 
 
 async def init_db():
-    global _pool, _iterative_scan
+    global _pool
     try:
         # Dans un thread : env.py a sa propre boucle asyncio. Les migrations créent
         # l'extension vector, qui doit exister avant que le pool n'enregistre le type.
@@ -46,9 +44,6 @@ async def init_db():
             f"La table chunks stocke des vecteurs de dimension {dim}, mais EMBEDDING_DIM vaut "
             f"{EMBEDDING_DIM} : changer de modèle d'embedding impose de réindexer les documents."
         )
-
-    version = await _pool.fetchval("SELECT extversion FROM pg_extension WHERE extname = 'vector'")
-    _iterative_scan = tuple(int(part) for part in version.split(".")[:2]) >= (0, 8)
 
 
 async def close_db():
@@ -219,32 +214,22 @@ async def delete_session(session_id: str, user_id: int) -> bool:
 
 
 # ─── Documents (RAG) ────────────────────────────────────────────────────────
-# owner_id NULL : document partagé. Un utilisateur voit ses documents et les partagés.
+# Documents de référence communs à tous les utilisateurs, indexés par l'admin
+# (python main.py index <fichier>).
 
-VISIBLE = "(d.owner_id = {user} OR d.owner_id IS NULL)"
-
-
-async def find_visible_document_by_hash(sha256: str, user_id: int) -> Dict[str, Any] | None:
-    row = await _pool.fetchrow(
-        f"SELECT d.id, d.source, d.owner_id IS NULL AS shared FROM documents d "
-        f"WHERE d.sha256 = $1 AND {VISIBLE.format(user='$2')}",
-        sha256, user_id,
-    )
+async def find_document_by_hash(sha256: str) -> Dict[str, Any] | None:
+    row = await _pool.fetchrow("SELECT id, source FROM documents WHERE sha256 = $1", sha256)
     return dict(row) if row else None
 
 
 async def insert_document(
-    owner_id: int | None, source: str, sha256: str, chunks: List[str], embeddings: List[List[float]]
+    source: str, sha256: str, chunks: List[str], embeddings: List[List[float]]
 ) -> Dict[str, Any]:
-    """
-    owner_id None pour un document partagé. Lève asyncpg.UniqueViolationError si
-    le même propriétaire a déjà un document de même empreinte.
-    """
+    """Lève asyncpg.UniqueViolationError si un document de même empreinte existe déjà."""
     async with _pool.acquire() as conn, conn.transaction():
         row = await conn.fetchrow(
-            "INSERT INTO documents (owner_id, source, sha256) VALUES ($1, $2, $3) "
-            "RETURNING id, source, created_at, owner_id IS NULL AS shared",
-            owner_id, source, sha256,
+            "INSERT INTO documents (source, sha256) VALUES ($1, $2) RETURNING id, source, created_at",
+            source, sha256,
         )
         await conn.executemany(
             "INSERT INTO chunks (document_id, position, content, embedding) VALUES ($1, $2, $3, $4)",
@@ -253,23 +238,13 @@ async def insert_document(
     return {**dict(row), "chunks": len(chunks)}
 
 
-async def list_documents(user_id: int) -> List[Dict[str, Any]]:
-    rows = await _pool.fetch(f"""
-        SELECT d.id, d.source, d.created_at, d.owner_id IS NULL AS shared, count(c.id) AS chunks
+async def list_documents() -> List[Dict[str, Any]]:
+    rows = await _pool.fetch("""
+        SELECT d.id, d.source, d.created_at, count(c.id) AS chunks
         FROM documents d LEFT JOIN chunks c ON c.document_id = d.id
-        WHERE {VISIBLE.format(user='$1')}
         GROUP BY d.id ORDER BY d.id
-    """, user_id)
+    """)
     return [dict(row) for row in rows]
-
-
-async def get_visible_document(document_id: int, user_id: int) -> Dict[str, Any] | None:
-    row = await _pool.fetchrow(
-        f"SELECT d.id, d.owner_id IS NULL AS shared FROM documents d "
-        f"WHERE d.id = $1 AND {VISIBLE.format(user='$2')}",
-        document_id, user_id,
-    )
-    return dict(row) if row else None
 
 
 async def delete_document(document_id: int) -> bool:
@@ -277,25 +252,14 @@ async def delete_document(document_id: int) -> bool:
     return status != "DELETE 0"
 
 
-async def search_chunks(embedding: List[float], k: int, user_id: int) -> List[Dict[str, Any]]:
-    """
-    Les k passages visibles les plus proches (distance cosinus), du plus au moins
-    pertinent. Avec un filtre, l'index HNSW peut renvoyer moins de k passages :
-    le parcours itératif de pgvector >= 0.8 continue jusqu'à en trouver assez.
-    """
-    async with _pool.acquire() as conn, conn.transaction():
-        if _iterative_scan:
-            await conn.execute("SET LOCAL hnsw.iterative_scan = relaxed_order")
-        # relaxed_order peut rendre les passages un peu dans le désordre : on retrie.
-        rows = await conn.fetch(f"""
-            SELECT * FROM (
-                SELECT c.id, d.source, c.content, 1 - (c.embedding <=> $1) AS score
-                FROM chunks c JOIN documents d ON d.id = c.document_id
-                WHERE {VISIBLE.format(user='$3')}
-                ORDER BY c.embedding <=> $1
-                LIMIT $2
-            ) nearest ORDER BY score DESC
-        """, embedding, k, user_id)
+async def search_chunks(embedding: List[float], k: int) -> List[Dict[str, Any]]:
+    """Les k passages les plus proches (distance cosinus), du plus au moins pertinent."""
+    rows = await _pool.fetch("""
+        SELECT c.id, d.source, c.content, 1 - (c.embedding <=> $1) AS score
+        FROM chunks c JOIN documents d ON d.id = c.document_id
+        ORDER BY c.embedding <=> $1
+        LIMIT $2
+    """, embedding, k)
     return [dict(row) for row in rows]
 
 # Paramètres usuels de BM25 : saturation de la fréquence d'un terme (k1) et
@@ -304,28 +268,22 @@ BM25_K1 = 1.2
 BM25_B = 0.75
 
 
-async def search_chunks_bm25(query: str, embedding: List[float], k: int, user_id: int) -> List[Dict[str, Any]]:
+async def search_chunks_bm25(query: str, embedding: List[float], k: int) -> List[Dict[str, Any]]:
     """
     Les k meilleurs passages selon BM25, calculé sur le tsvector des passages
     (configuration french, comme dans la migration). Il suffit qu'un passage
     contienne un des termes de la requête : l'IDF donne leur poids aux termes rares.
     La longueur d'un passage est son nombre de lexèmes distincts (approximation).
-    Les statistiques (nombre de passages, longueur moyenne, IDF) portent sur les
-    passages visibles par l'utilisateur. Le score cosinus est aussi renvoyé, pour
-    les seuils appliqués après fusion.
+    Le score cosinus est aussi renvoyé, pour les seuils appliqués après fusion.
     """
-    rows = await _pool.fetch(f"""
+    rows = await _pool.fetch("""
         WITH terms AS (
             SELECT unnest(tsvector_to_array(to_tsvector('french', $1))) AS lexeme
         ),
-        visible AS (
-            SELECT c.id, c.tsv FROM chunks c JOIN documents d ON d.id = c.document_id
-            WHERE {VISIBLE.format(user='$6')}
-        ),
         matched AS (
             -- plainto_tsquery relie les termes par & : on les relie par | (OU).
-            SELECT v.id, v.tsv FROM visible v
-            WHERE v.tsv @@ replace(plainto_tsquery('french', $1)::text, ' & ', ' | ')::tsquery
+            SELECT c.id, c.tsv FROM chunks c
+            WHERE c.tsv @@ replace(plainto_tsquery('french', $1)::text, ' & ', ' | ')::tsquery
         ),
         tf AS (
             SELECT m.id, t.lexeme, cardinality(t.positions) AS freq, length(m.tsv) AS len
@@ -336,7 +294,7 @@ async def search_chunks_bm25(query: str, embedding: List[float], k: int, user_id
             SELECT lexeme, count(*) AS n FROM tf GROUP BY lexeme
         ),
         stats AS (
-            SELECT count(*) AS total, avg(length(tsv)) AS avg_len FROM visible
+            SELECT count(*) AS total, avg(length(tsv)) AS avg_len FROM chunks
         ),
         ranked AS (
             SELECT tf.id, sum(
@@ -351,5 +309,5 @@ async def search_chunks_bm25(query: str, embedding: List[float], k: int, user_id
         SELECT c.id, d.source, c.content, 1 - (c.embedding <=> $2) AS score, r.bm25
         FROM ranked r JOIN chunks c ON c.id = r.id JOIN documents d ON d.id = c.document_id
         ORDER BY r.bm25 DESC
-    """, query, embedding, k, BM25_K1, BM25_B, user_id)
+    """, query, embedding, k, BM25_K1, BM25_B)
     return [dict(row) for row in rows]

@@ -12,9 +12,9 @@ MAX_SEARCH_RESULTS = 10
 
 # ─── Tools ──────────────────────────────────────────────────────────────────
 
-async def search_documents(user_id: int, query: str, k: int = DEFAULT_SEARCH_RESULTS) -> str:
+async def search_documents(_user_id: int, query: str, k: int = DEFAULT_SEARCH_RESULTS) -> str:
     k = max(1, min(int(k), MAX_SEARCH_RESULTS))
-    candidates = await rag.search(query, k, user_id)
+    candidates = await rag.search(query, k)
     if not candidates:
         return "Aucun document indexé."
     # Un passage trouvé par mots-clés (BM25) est gardé même sous le seuil cosinus :
@@ -37,7 +37,7 @@ TOOLS: Dict[str, Dict[str, Any]] = {
     "search_documents": {
         "function": search_documents,
         "description": (
-            "Recherche dans les documents fournis par l'utilisateur, par le sens "
+            "Recherche dans les documents de référence (règles, guides), par le sens "
             "et par mots-clés (noms propres, identifiants, termes exacts). "
             "Renvoie au plus k passages pertinents avec leur source : "
             "peut en renvoyer moins, voire aucun, si rien n'est assez proche."

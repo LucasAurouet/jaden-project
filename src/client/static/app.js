@@ -1,16 +1,11 @@
 const API_URL = "/api/compute";
 const METRICS_URL = "/api/metrics";
-const DOCUMENTS_URL = "/api/documents";
 const SESSIONS_URL = "/api/sessions";
 
 const chatBox = document.getElementById("chat-box");
 const userInput = document.getElementById("user-input");
 const promptForm = document.getElementById("prompt-form");
 const sendBtn = document.getElementById("send-btn");
-const documentList = document.getElementById("document-list");
-const fileInput = document.getElementById("file-input");
-const sharedInput = document.getElementById("shared-input");
-const refreshDocumentsBtn = document.getElementById("refresh-documents-btn");
 const sessionList = document.getElementById("session-list");
 const loginScreen = document.getElementById("login");
 const loginForm = document.getElementById("login-form");
@@ -52,21 +47,6 @@ document.addEventListener('DOMContentLoaded', async () => {
 promptForm.addEventListener("submit", (e) => {
     e.preventDefault();
     sendMessage();
-});
-
-fileInput.addEventListener("change", async (event) => {
-    const file = event.target.files[0];
-    if (!file) return;
-
-    await uploadDocument(file);
-
-    event.target.value = '';
-});
-
-refreshDocumentsBtn.addEventListener("click", async () => {
-    refreshDocumentsBtn.disabled = true;
-    await fetchDocuments();
-    refreshDocumentsBtn.disabled = false;
 });
 
 document.getElementById("new-session-btn").addEventListener("click", () => {
@@ -114,8 +94,6 @@ async function startApp(user) {
     loginScreen.hidden = true;
     document.getElementById("user-box").hidden = false;
     document.getElementById("user-name").textContent = user.username;
-    // Seul un admin peut ajouter un document partagé (vérifié aussi par le serveur).
-    document.getElementById("shared-option").hidden = !user.is_admin;
 
     if (!monitorStarted) {
         monitorStarted = true;
@@ -123,7 +101,6 @@ async function startApp(user) {
         setInterval(updateMetrics, 2000);
     }
     updateMetrics();
-    fetchDocuments();
     await fetchSessions();
 
     const fromUrl = decodeURIComponent(location.hash.slice(1));
@@ -139,7 +116,6 @@ function showLogin() {
     currentUser = null;
     document.getElementById("user-box").hidden = true;
     sessionList.replaceChildren();
-    documentList.replaceChildren();
     resetChat();
     loginScreen.hidden = false;
     document.getElementById("login-username").focus();
@@ -169,122 +145,12 @@ function tickClock() {
 const cssVar = (name) => getComputedStyle(document.documentElement).getPropertyValue(name).trim();
 
 
-// ─── DOCUMENTS ──────────────────────────────────────────────────────────────
+// ─── ERREURS ────────────────────────────────────────────────────────────────
 // Les erreurs FastAPI arrivent sous la forme {"detail": "..."}.
 async function errorMessage(response) {
     const data = await response.json().catch(() => null);
     return data?.detail || `Erreur HTTP ${response.status}`;
 }
-
-async function uploadDocument(file) {
-    const statusLabel = document.getElementById('upload-status');
-    const setStatus = (state, text) => {
-        statusLabel.dataset.state = state;
-        statusLabel.textContent = text;
-    };
-    setStatus("busy", "▸ Indexation en cours…");
-    fileInput.disabled = true;
-
-    const formData = new FormData();
-    formData.append("file", file);
-    formData.append("shared", sharedInput.checked && currentUser?.is_admin ? "true" : "false");
-
-    try {
-        const response = await apiFetch(DOCUMENTS_URL, { method: "POST", body: formData });
-
-        if (response.ok) {
-            const result = await response.json();
-            setStatus("ok", `✔ ${result.source} indexé (${result.chunks} passage${result.chunks > 1 ? 's' : ''})`);
-            await fetchDocuments();
-        } else {
-            setStatus("error", `✖ ${await errorMessage(response)}`);
-        }
-    } catch (error) {
-        setStatus("error", `✖ ${error.message}`);
-        console.error("Erreur d'upload :", error);
-    } finally {
-        fileInput.disabled = false;
-    }
-}
-
-
-async function fetchDocuments() {
-    try {
-        const response = await apiFetch(DOCUMENTS_URL);
-        if (!response.ok) throw new Error(await errorMessage(response));
-        renderDocuments(await response.json());
-    } catch (error) {
-        console.error("Impossible de récupérer la liste des documents :", error);
-        const li = document.createElement("li");
-        li.className = "documents-error";
-        li.textContent = `✖ ${error.message}`;
-        li.title = error.message;
-        documentList.replaceChildren(li);
-    }
-}
-
-
-async function deleteDocument(doc, button) {
-    if (!confirm(`Retirer « ${doc.source} » de la base de connaissances ?`)) return;
-
-    button.disabled = true;
-    try {
-        const response = await apiFetch(`${DOCUMENTS_URL}/${doc.id}`, { method: "DELETE" });
-        if (!response.ok && response.status !== 404) throw new Error(await errorMessage(response));
-    } catch (error) {
-        alert(`Suppression impossible : ${error.message}`);
-    }
-    await fetchDocuments();
-}
-
-
-function renderDocuments(documents) {
-    if (!documents || documents.length === 0) {
-        const li = document.createElement("li");
-        li.className = "documents-empty";
-        li.textContent = "Aucun document indexé";
-        documentList.replaceChildren(li);
-        return;
-    }
-
-    documentList.replaceChildren(...documents.map(doc => {
-        const li = document.createElement("li");
-        li.className = "document-item";
-
-        const name = document.createElement("span");
-        name.className = "document-name";
-        name.title = doc.source;
-        name.textContent = doc.source;
-
-        const chunks = document.createElement("span");
-        chunks.className = "document-chunks";
-        chunks.textContent = `${doc.chunks} pass.`;
-        chunks.title = `${doc.chunks} passage${doc.chunks > 1 ? 's' : ''} indexé${doc.chunks > 1 ? 's' : ''}`;
-
-        li.append(name);
-        if (doc.shared) {
-            const badge = document.createElement("span");
-            badge.className = "document-shared";
-            badge.textContent = "PARTAGÉ";
-            badge.title = "Document partagé, visible de tous les utilisateurs";
-            li.append(badge);
-        }
-        li.append(chunks);
-
-        // Les documents partagés ne sont retirés que par un admin.
-        if (!doc.shared || currentUser?.is_admin) {
-            const remove = document.createElement("button");
-            remove.className = "document-delete";
-            remove.textContent = "✕";
-            remove.title = "Retirer ce document";
-            remove.setAttribute("aria-label", `Retirer ${doc.source}`);
-            remove.addEventListener("click", () => deleteDocument(doc, remove));
-            li.append(remove);
-        }
-        return li;
-    }));
-}
-
 
 // ─── CONVERSATIONS ──────────────────────────────────────────────────────────
 // crypto.randomUUID n'existe qu'en contexte sécurisé (HTTPS ou localhost).

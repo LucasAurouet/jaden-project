@@ -7,7 +7,6 @@ from src.client.services import homn
 from src.client.routers.auth import router as auth_router
 from src.client.routers.chat import router as chat_router
 from src.client.routers.sessions import router as sessions_router
-from src.client.routers.documents import router as documents_router
 from src.client.routers.metrics import router as metrics_router
 
 static_path = os.path.join(os.path.dirname(__file__), "static")
@@ -30,7 +29,6 @@ async def root():
 app.include_router(auth_router, prefix="/api")
 app.include_router(chat_router, prefix="/api")
 app.include_router(sessions_router, prefix="/api")
-app.include_router(documents_router, prefix="/api")
 app.include_router(metrics_router, prefix="/api")
 
 app.mount("/static", StaticFiles(directory=static_path), name="static")

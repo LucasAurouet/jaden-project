@@ -6,7 +6,10 @@ USAGE = """Usage: python main.py <commande>
   client                     interface web sur http://127.0.0.1:{port}
   adduser <nom> [--admin]    crée un compte (le premier admin récupère les conversations existantes)
   passwd <nom>               change le mot de passe et déconnecte le compte partout
-  deluser <nom>              supprime le compte, ses conversations et ses documents privés""".format(port=CLIENT_PORT)
+  deluser <nom>              supprime le compte et ses conversations
+  index <fichier>...         indexe des documents de référence (RAG), visibles de tous
+  documents                  liste les documents indexés
+  unindex <id>               retire un document de l'index""".format(port=CLIENT_PORT)
 
 
 async def manage_users(command: str, args: list[str]) -> int:
@@ -37,7 +40,7 @@ async def manage_users(command: str, args: list[str]) -> int:
                 raise LookupError(f"Aucun compte {username}.")
             print(f"Mot de passe de {username} changé ; ses sessions de connexion sont révoquées.")
         elif command == "deluser":
-            if input(f"Supprimer {username}, ses conversations et ses documents privés ? [o/N] ").lower() != "o":
+            if input(f"Supprimer {username} et ses conversations ? [o/N] ").lower() != "o":
                 return 1
             if not await database.delete_user(username):
                 raise LookupError(f"Aucun compte {username}.")
@@ -51,6 +54,46 @@ async def manage_users(command: str, args: list[str]) -> int:
     finally:
         await database.close_db()
     return 0
+
+
+async def manage_documents(command: str, args: list[str]) -> int:
+    """Documents de référence du RAG, sur la base configurée dans DATABASE_URL."""
+    from pathlib import Path
+    from src.api.services import database, embeddings, rag
+    from src.api.services.embeddings import EmbeddingError
+
+    if command in ("index", "unindex") and not args:
+        print(USAGE)
+        return 1
+
+    await database.init_db()
+    await embeddings.start_client()
+    status = 0
+    try:
+        if command == "index":
+            for path in map(Path, args):
+                try:
+                    result = await rag.ingest(path.name, path.read_bytes())
+                    print(f"{path} : indexé (id {result['id']}, {result['chunks']} passage(s)).")
+                except (OSError, rag.DocumentError, EmbeddingError) as e:
+                    print(f"{path} : {e}")
+                    status = 1
+        elif command == "documents":
+            documents = await database.list_documents()
+            for d in documents:
+                print(f"{d['id']:>5}  {d['source']}  ({d['chunks']} passage(s), {d['created_at']:%Y-%m-%d})")
+            if not documents:
+                print("Aucun document indexé.")
+        elif command == "unindex":
+            if not args[0].isdigit() or not await database.delete_document(int(args[0])):
+                print(f"Erreur : aucun document d'id {args[0]} (voir python main.py documents).")
+                status = 1
+            else:
+                print(f"Document {args[0]} retiré.")
+    finally:
+        await embeddings.stop_client()
+        await database.close_db()
+    return status
 
 
 if __name__ == "__main__":
@@ -71,6 +114,10 @@ if __name__ == "__main__":
     elif mode in ("adduser", "passwd", "deluser"):
         import asyncio
         sys.exit(asyncio.run(manage_users(mode, sys.argv[2:])))
+
+    elif mode in ("index", "documents", "unindex"):
+        import asyncio
+        sys.exit(asyncio.run(manage_documents(mode, sys.argv[2:])))
 
     else:
         print(USAGE)

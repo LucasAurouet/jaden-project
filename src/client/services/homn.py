@@ -6,10 +6,6 @@ from src.schemas import ComputeRequest, LoginRequest
 
 SERVER_URL = f"http://{SERVER_IP}:{SERVER_PORT}"
 
-# L'indexation vectorise chaque passage du document : bien plus long qu'une requête.
-UPLOAD_TIMEOUT = 600.0
-
-
 _client: httpx.AsyncClient | None = None
 
 
@@ -97,25 +93,7 @@ async def delete_session(token: str, session_id: str):
     await _request("DELETE", f"/v1/sessions/{quote(session_id, safe='')}", token)
 
 
-# ─── Documents ──────────────────────────────────────────────────────────────
-
-async def upload_document(token: str, filename: str, content: bytes, content_type: str | None, shared: bool) -> Dict[str, Any]:
-    response = await _request(
-        "POST", "/v1/documents", token,
-        files={"file": (filename, content, content_type or "application/octet-stream")},
-        data={"shared": "true" if shared else "false"},
-        timeout=UPLOAD_TIMEOUT,
-    )
-    return response.json()
-
-
-async def list_documents(token: str) -> List[Dict[str, Any]]:
-    return (await _request("GET", "/v1/documents", token)).json()
-
-
-async def delete_document(token: str, document_id: int):
-    await _request("DELETE", f"/v1/documents/{document_id}", token)
-
+# ─── Statistiques ───────────────────────────────────────────────────────────
 
 async def get_server_metrics(token: str) -> Dict[str, Any]:
     try:
