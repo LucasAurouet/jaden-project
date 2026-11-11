@@ -7,11 +7,11 @@ from src.api.services.rag import auto_search, format_passages
 from src.api.services.tools import TOOL_SCHEMAS, execute_tool
 
 SYSTEM_PROMPT = (
-    "Tu es Jaden, un assistant spécialisé dans le jeu de cartes Yu-Gi-Oh!. "
-    "Des documents de référence sont indexés : utilise le tool search_documents "
-    "dès que la question peut s'y rapporter, et cite la source des passages utilisés. "
-    "Des passages trouvés automatiquement peuvent être joints au message de l'utilisateur : "
-    "ignore-les s'ils sont hors sujet, et utilise search_documents s'ils ne suffisent pas."
+    "You are Jaden, an assistant for the Yu-Gi-Oh! trading card game. Always answer in English. "
+    "Reference documents are indexed: use the search_documents tool whenever the question "
+    "may relate to them, and cite the source of the passages you use. "
+    "Automatically retrieved passages may be appended to the user's message: "
+    "ignore them if they are off-topic, and use search_documents if they are not enough."
 )
 MAX_TOOL_ITERATIONS = 3
 
@@ -19,20 +19,20 @@ MAX_TOOL_ITERATIONS = 3
 # ce qui laisse de la marge avant le prochain.
 CONTEXT_KEEP_RATIO = 0.4
 SUMMARY_MAX_TOKENS = 1024
-SUMMARY_PROMPT = """Résume la conversation ci-dessous : ce résumé remplacera ces échanges dans la mémoire de l'assistant.
+SUMMARY_PROMPT = """Summarize the conversation below: this summary will replace these exchanges in the assistant's memory.
 
-Consignes :
-- Conserve les faits donnés par l'utilisateur, ses préférences, ses contraintes et les décisions prises.
-- Conserve les informations importantes des réponses, avec les sources de documents citées.
-- Conserve les questions en suspens et la tâche en cours.
-- Sois factuel et précis, n'invente rien.
-- Reste concis, mais assez complet pour poursuivre la conversation sans les échanges d'origine.
-- Réponds uniquement par le résumé, en français.
+Instructions:
+- Keep the facts given by the user, their preferences, their constraints and the decisions made.
+- Keep the important information from the answers, with the cited document sources.
+- Keep the open questions and the task in progress.
+- Be factual and precise, invent nothing.
+- Be concise, but complete enough to continue the conversation without the original exchanges.
+- Answer with the summary only, in English.
 
-### Résumé précédent :
+### Previous summary:
 {previous}
 
-### Échanges à résumer :
+### Exchanges to summarize:
 {exchanges}"""
 
 
@@ -100,15 +100,15 @@ def _batches(exchanges: List[List[Dict[str, Any]]], limit: int) -> Iterator[List
 async def _summarize(previous: str | None, messages: List[Dict[str, Any]]) -> str:
     # Un message géant est tronqué pour que l'appel de résumé tienne dans le contexte.
     max_chars = CONTEXT_TOKEN_BUDGET
-    labels = {"user": "Utilisateur", "assistant": "Assistant"}
+    labels = {"user": "User", "assistant": "Assistant"}
     exchanges = "\n\n".join(
-        f"{labels.get(message['role'], message['role'])} : {message['content'][:max_chars]}"
+        f"{labels.get(message['role'], message['role'])}: {message['content'][:max_chars]}"
         for message in messages
     )
-    prompt = SUMMARY_PROMPT.format(previous=previous or "(aucun)", exchanges=exchanges)
+    prompt = SUMMARY_PROMPT.format(previous=previous or "(none)", exchanges=exchanges)
     summary = (await complete_chat([{"role": "user", "content": prompt}], max_tokens=SUMMARY_MAX_TOKENS)).strip()
     if not summary:
-        raise InferenceError("Le modèle a renvoyé un résumé vide.")
+        raise InferenceError("The model returned an empty summary.")
     return summary
 
 
@@ -135,10 +135,10 @@ class ChatService:
         if RAG_AUTO_SEARCH:
             passages = await auto_search(prompt)
             if passages:
-                yield _sse({"type": "status", "message": f"{len(passages)} passage(s) trouvé(s) dans les documents"})
+                yield _sse({"type": "status", "message": f"{len(passages)} passage(s) found in the documents"})
                 question += (
-                    "\n\n---\nPassages des documents trouvés automatiquement "
-                    f"(peut-être hors sujet) :\n\n{format_passages(passages)}"
+                    "\n\n---\nPassages automatically retrieved from the documents "
+                    f"(possibly off-topic):\n\n{format_passages(passages)}"
                 )
 
         # L'historique en base ne contient que des tours user/assistant :
@@ -146,7 +146,7 @@ class ChatService:
         # car certains templates refusent un second message système.
         system = SYSTEM_PROMPT
         if summary:
-            system += f"\n\nRésumé des échanges précédents :\n{summary}"
+            system += f"\n\nSummary of the previous exchanges:\n{summary}"
         messages = (
             [{"role": "system", "content": system}]
             + [{"role": message["role"], "content": message["content"]} for message in history]
@@ -166,7 +166,7 @@ class ChatService:
         try:
             await save_exchange(user_id, session_id, prompt, answer)
         except SessionOwnershipError:
-            yield _sse({"type": "error", "message": "Conversation introuvable : la réponse n'a pas été enregistrée."})
+            yield _sse({"type": "error", "message": "Conversation not found: the answer was not saved."})
             return
         yield _sse({"type": "done"})
 
@@ -189,7 +189,7 @@ class ChatService:
                 size += _estimate_messages(exchanges[keep])
 
             if keep > 0:
-                yield {"type": "status", "message": "Résumé de l'historique…"}
+                yield {"type": "status", "message": "Summarizing the history…"}
                 history = [message for exchange in exchanges[keep:] for message in exchange]
                 try:
                     # Par lots bornés : une session très longue se résorbe en plusieurs passes.

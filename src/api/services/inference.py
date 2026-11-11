@@ -71,7 +71,7 @@ async def stream_chat_completion(
                     detail = response.json()["error"]["message"]
                 except (ValueError, KeyError, TypeError):
                     detail = response.text
-                raise InferenceError(f"Erreur HTTP {response.status_code} : {detail}")
+                raise InferenceError(f"HTTP error {response.status_code}: {detail}")
 
             async for line in response.aiter_lines():
                 if not line.startswith("data:"):
@@ -82,16 +82,16 @@ async def stream_chat_completion(
                 try:
                     choices = json.loads(data)["choices"]
                 except (ValueError, KeyError, TypeError) as e:
-                    raise InferenceError("La réponse du moteur d'inférence n'est pas au format attendu.") from e
+                    raise InferenceError("The inference engine's answer is not in the expected format.") from e
                 # Le dernier chunk (statistiques d'usage) peut n'avoir aucun choice.
                 if choices:
                     yield choices[0].get("delta") or {}
     except httpx.ConnectError as e:
-        raise InferenceError("Le moteur d'inférence est injoignable.") from e
+        raise InferenceError("The inference engine is unreachable.") from e
     except httpx.TimeoutException as e:
-        raise InferenceError("Le moteur d'inférence n'a pas répondu à temps.") from e
+        raise InferenceError("The inference engine did not answer in time.") from e
     except httpx.HTTPError as e:
-        raise InferenceError("La connexion au moteur d'inférence a été interrompue.") from e
+        raise InferenceError("The connection to the inference engine was interrupted.") from e
 
 
 async def complete_chat(messages: List[Dict[str, Any]], max_tokens: int | None = None) -> str:

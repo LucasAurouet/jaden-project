@@ -32,7 +32,7 @@ async def init_db():
         await asyncio.to_thread(_upgrade_schema)
         _pool = await asyncpg.create_pool(DATABASE_URL, init=register_vector)
     except (OSError, asyncpg.PostgresError, SQLAlchemyError) as e:
-        raise DatabaseError(f"Connexion à Postgres ou migration du schéma impossible ({e}).") from e
+        raise DatabaseError(f"Cannot connect to Postgres or migrate the schema ({e}).") from e
 
     # Pour vector, atttypmod vaut la dimension déclarée.
     dim = await _pool.fetchval("""
@@ -41,15 +41,15 @@ async def init_db():
     """)
     if dim != EMBEDDING_DIM:
         raise DatabaseError(
-            f"La table chunks stocke des vecteurs de dimension {dim}, mais EMBEDDING_DIM vaut "
-            f"{EMBEDDING_DIM} : changer de modèle d'embedding impose de réindexer les documents."
+            f"The chunks table stores vectors of dimension {dim}, but EMBEDDING_DIM is "
+            f"{EMBEDDING_DIM}: changing the embedding model requires reindexing the documents."
         )
 
 
 def get_pool() -> asyncpg.Pool:
     """Pool de connexions, pour les modules qui ont leurs propres requêtes (cards/)."""
     if _pool is None:
-        raise DatabaseError("Base non initialisée : appeler init_db d'abord.")
+        raise DatabaseError("Database not initialized: call init_db first.")
     return _pool
 
 

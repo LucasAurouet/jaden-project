@@ -7,7 +7,7 @@ from src.client.services import jaden
 from src.client.services.jaden import ServerError
 from src.schemas import LoginRequest
 
-router = APIRouter(tags=["Authentification"])
+router = APIRouter(tags=["Authentication"])
 
 
 @router.post("/login")

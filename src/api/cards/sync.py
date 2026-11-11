@@ -36,13 +36,13 @@ async def _get_json(client: httpx.AsyncClient, path: str, params: Dict[str, str]
     try:
         response = await client.get(path, params=params)
     except httpx.HTTPError as e:
-        raise SyncError(f"API YGOPRODeck injoignable ({e.__class__.__name__}).") from e
+        raise SyncError(f"YGOPRODeck API unreachable ({e.__class__.__name__}).") from e
     if response.status_code != 200:
-        raise SyncError(f"Erreur HTTP {response.status_code} de l'API YGOPRODeck sur {path} : {response.text[:200]}")
+        raise SyncError(f"HTTP error {response.status_code} from the YGOPRODeck API on {path}: {response.text[:200]}")
     try:
         return response.json()
     except ValueError as e:
-        raise SyncError(f"Réponse de {path} illisible (JSON invalide).") from e
+        raise SyncError(f"Unreadable answer from {path} (invalid JSON).") from e
 
 
 async def _fetch_cards(client: httpx.AsyncClient) -> List[Dict[str, Any]]:
@@ -50,7 +50,7 @@ async def _fetch_cards(client: httpx.AsyncClient) -> List[Dict[str, Any]]:
     try:
         return data["data"]
     except (KeyError, TypeError) as e:
-        raise SyncError("Réponse de cardinfo.php inattendue (pas de champ data).") from e
+        raise SyncError("Unexpected answer from cardinfo.php (no data field).") from e
 
 
 def _card_row(card: Dict[str, Any]) -> tuple:
@@ -107,23 +107,23 @@ async def sync_cards(force: bool = False, log: Callable[[str], None] = print) ->
             [remote] = await _get_json(client, "/checkDBVer.php")
             version = str(remote["database_version"])
         except (ValueError, KeyError, TypeError) as e:
-            raise SyncError("Réponse de checkDBVer.php inattendue.") from e
+            raise SyncError("Unexpected answer from checkDBVer.php.") from e
 
         local = await pool.fetchval("SELECT value FROM sync_state WHERE key = $1", VERSION_KEY)
         if local == version and not force:
-            log(f"Base de cartes déjà à jour (version YGOPRODeck {version}).")
+            log(f"Card database already up to date (YGOPRODeck version {version}).")
             return {"updated": False, "version": version}
 
-        log(f"Téléchargement des cartes (version YGOPRODeck {version}, locale {local or 'aucune'})…")
+        log(f"Downloading cards (YGOPRODeck version {version}, local {local or 'none'})…")
         await asyncio.sleep(REQUEST_PAUSE)
         all_cards = await _fetch_cards(client)
-        log(f"  {len(all_cards)} cartes téléchargées")
+        log(f"  {len(all_cards)} cards downloaded")
 
     cards = [c for c in all_cards if c.get("frameType") not in EXCLUDED_FRAME_TYPES]
     try:
         rows = [_card_row(card) for card in cards]
     except (KeyError, TypeError) as e:
-        raise SyncError(f"Carte au format inattendu ({e}).") from e
+        raise SyncError(f"Card with an unexpected format ({e}).") from e
     # Un id d'artwork déjà vu est ignoré : il ne doit désigner qu'une carte.
     artworks: Dict[int, tuple] = {}
     for card in cards:
@@ -147,8 +147,7 @@ async def sync_cards(force: bool = False, log: Callable[[str], None] = print) ->
         )
 
     log(
-        f"{len(rows)} cartes enregistrées ({len(all_cards) - len(cards)} cartes Skill et jetons ignorés, "
-        f"{removed} retirées), "
-        f"{len(artworks)} artworks."
+        f"{len(rows)} cards saved ({len(all_cards) - len(cards)} Skill cards and tokens skipped, "
+        f"{removed} removed), {len(artworks)} artworks."
     )
     return {"updated": True, "version": version, "cards": len(rows), "removed": removed}

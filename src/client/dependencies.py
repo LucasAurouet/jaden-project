@@ -11,7 +11,7 @@ COOKIE_NAME = "jaden_session"
 def session_token(request: Request) -> str:
     token = request.cookies.get(COOKIE_NAME)
     if not token:
-        raise HTTPException(status_code=401, detail="Connexion requise.")
+        raise HTTPException(status_code=401, detail="Login required.")
     return token
 
 

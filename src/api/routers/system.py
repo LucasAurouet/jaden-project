@@ -1,6 +1,6 @@
 from fastapi import APIRouter
 
-router = APIRouter(tags=["Système"])
+router = APIRouter(tags=["System"])
 
 @router.get("/health")
 async def health():

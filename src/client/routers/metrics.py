@@ -3,7 +3,7 @@ from typing import Dict, Any
 from src.client.dependencies import session_token
 from src.client.services import jaden
 
-router = APIRouter(tags=["Statistiques"])
+router = APIRouter(tags=["Metrics"])
 
 @router.get("/metrics")
 async def metrics(token: str = Depends(session_token)) -> Dict[str, Any]:

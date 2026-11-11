@@ -15,7 +15,7 @@ static_path = os.path.join(os.path.dirname(__file__), "static")
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     await jaden.start_client()
-    print(f"Serveur d'inférence : {jaden.SERVER_URL}")
+    print(f"Inference server: {jaden.SERVER_URL}")
     yield
     await jaden.stop_client()
 

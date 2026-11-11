@@ -62,10 +62,10 @@ async def ingest(filename: str, content: bytes) -> Dict[str, Any]:
     """Découpe, vectorise et indexe un document de référence, visible de tous."""
     name = os.path.basename(filename or "")
     if not name or name.startswith("."):
-        raise DocumentError("Nom de fichier invalide.")
+        raise DocumentError("Invalid file name.")
     if Path(name).suffix.lower() not in ALLOWED_EXTENSIONS:
         raise DocumentError(
-            f"Format non pris en charge. Formats autorisés : {', '.join(sorted(ALLOWED_EXTENSIONS))}"
+            f"Unsupported format. Allowed formats: {', '.join(sorted(ALLOWED_EXTENSIONS))}"
         )
 
     # Vérifié avant les embeddings, pour ne pas les calculer pour rien. Seul le
@@ -73,7 +73,7 @@ async def ingest(filename: str, content: bytes) -> Dict[str, Any]:
     sha256 = hashlib.sha256(content).hexdigest()
     existing = await database.find_document_by_hash(sha256)
     if existing:
-        raise DuplicateDocument(f"Ce fichier est déjà indexé (sous le nom {existing['source']}).")
+        raise DuplicateDocument(f"This file is already indexed (as {existing['source']}).")
 
     try:
         text = content.decode("utf-8")
@@ -82,7 +82,7 @@ async def ingest(filename: str, content: bytes) -> Dict[str, Any]:
 
     chunks = chunk_text(text)
     if not chunks:
-        raise DocumentError("Le fichier est vide.")
+        raise DocumentError("The file is empty.")
 
     # Le préfixe ne sert qu'au vecteur : content (affichage, BM25) reste le texte brut.
     embeddings = await embed([EMBEDDING_PASSAGE_PREFIX + chunk for chunk in chunks])
@@ -90,7 +90,7 @@ async def ingest(filename: str, content: bytes) -> Dict[str, Any]:
         return await database.insert_document(name, sha256, chunks, embeddings)
     except asyncpg.UniqueViolationError:
         # Même fichier indexé deux fois en même temps : l'index unique tranche.
-        raise DuplicateDocument("Ce fichier est déjà indexé.")
+        raise DuplicateDocument("This file is already indexed.")
 
 
 # ─── Recherche ──────────────────────────────────────────────────────────────

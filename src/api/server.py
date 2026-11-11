@@ -21,7 +21,7 @@ async def lifespan(app: FastAPI):
     await embeddings.stop_client()
     await stop_client()
     await close_db()
-    print("Fermeture du serveur")
+    print("Server shutting down")
 
 app = FastAPI(title="Jaden Inference Server", lifespan=lifespan)
 
@@ -31,11 +31,11 @@ def _error(status: int, message: str, kind: str) -> JSONResponse:
 
 @app.exception_handler(UpstreamUnavailable)
 async def upstream_unavailable(request: Request, exc: UpstreamUnavailable):
-    return _error(502, "Le moteur d'inférence est injoignable.", "upstream_unavailable")
+    return _error(502, "The inference engine is unreachable.", "upstream_unavailable")
 
 @app.exception_handler(UpstreamTimeout)
 async def upstream_timeout(request: Request, exc: UpstreamTimeout):
-    return _error(504, "Le moteur d'inférence n'a pas répondu à temps.", "upstream_timeout")
+    return _error(504, "The inference engine did not answer in time.", "upstream_timeout")
 
 
 @app.get("/")

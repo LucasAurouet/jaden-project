@@ -42,22 +42,22 @@ async def _embed_batch(texts: List[str]) -> List[List[float]]:
     try:
         response = await _client.post("/v1/embeddings", json=payload)
     except httpx.ConnectError as e:
-        raise EmbeddingError("Le fournisseur d'embeddings est injoignable.") from e
+        raise EmbeddingError("The embedding provider is unreachable.") from e
     except httpx.TimeoutException as e:
-        raise EmbeddingError("Le fournisseur d'embeddings n'a pas répondu à temps.") from e
+        raise EmbeddingError("The embedding provider did not answer in time.") from e
 
     if response.status_code != 200:
-        raise EmbeddingError(f"Erreur HTTP {response.status_code} du fournisseur d'embeddings : {response.text}")
+        raise EmbeddingError(f"HTTP error {response.status_code} from the embedding provider: {response.text}")
 
     try:
         data = sorted(response.json()["data"], key=lambda d: d["index"])
         vectors = [d["embedding"] for d in data]
     except (ValueError, KeyError, TypeError) as e:
-        raise EmbeddingError("La réponse du fournisseur d'embeddings n'est pas au format attendu.") from e
+        raise EmbeddingError("The embedding provider's answer is not in the expected format.") from e
 
     if len(vectors) != len(texts) or any(len(v) != EMBEDDING_DIM for v in vectors):
         raise EmbeddingError(
-            f"Embeddings inattendus : {EMBEDDING_DIM} dimensions attendues (EMBEDDING_DIM), "
-            f"le modèle en renvoie {len(vectors[0]) if vectors else 0}."
+            f"Unexpected embeddings: {EMBEDDING_DIM} dimensions expected (EMBEDDING_DIM), "
+            f"the model returns {len(vectors[0]) if vectors else 0}."
         )
     return vectors

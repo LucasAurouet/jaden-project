@@ -1,19 +1,19 @@
 import sys
 from config import BIND_HOST, SERVER_PORT, CLIENT_PORT
 
-USAGE = """Usage: python main.py <commande>
-  server                     serveur d'inférence (machine GPU)
-  client                     interface web sur http://127.0.0.1:{port}
-  adduser <nom> [--admin]    crée un compte
-  passwd <nom>               change le mot de passe et déconnecte le compte partout
-  deluser <nom>              supprime le compte et ses conversations
-  index <fichier>...         indexe des documents de référence (RAG), visibles de tous
-  documents                  liste les documents indexés
-  unindex <id>               retire un document de l'index
-  sync-cards [options]       met à jour la base de cartes depuis YGOPRODeck et la vectorise
-                               --force : retélécharge même si la version n'a pas changé
-                               --embed-only : vectorise seulement (cartes sans vecteur à jour)
-                               --reembed : revectorise tout (après un changement de modèle)""".format(port=CLIENT_PORT)
+USAGE = """Usage: python main.py <command>
+  server                     inference server (GPU machine)
+  client                     web interface on http://127.0.0.1:{port}
+  adduser <name> [--admin]   create an account
+  passwd <name>              change the password and log the account out everywhere
+  deluser <name>             delete the account and its conversations
+  index <file>...            index reference documents (RAG), visible to everyone
+  documents                  list the indexed documents
+  unindex <id>               remove a document from the index
+  sync-cards [options]       update the card database from YGOPRODeck and embed it
+                               --force: download again even if the version is unchanged
+                               --embed-only: only embed (cards without an up-to-date vector)
+                               --reembed: embed everything again (after a model change)""".format(port=CLIENT_PORT)
 
 
 async def manage_users(command: str, args: list[str]) -> int:
@@ -28,9 +28,9 @@ async def manage_users(command: str, args: list[str]) -> int:
     username = args[0]
 
     def ask_password() -> str:
-        password = getpass(f"Mot de passe pour {username} : ")
-        if password != getpass("Confirmation : "):
-            raise ValueError("Les mots de passe ne correspondent pas.")
+        password = getpass(f"Password for {username}: ")
+        if password != getpass("Confirm: "):
+            raise ValueError("The passwords do not match.")
         return password
 
     await database.init_db()
@@ -38,22 +38,22 @@ async def manage_users(command: str, args: list[str]) -> int:
         if command == "adduser":
             is_admin = "--admin" in args[1:]
             user = await database.create_user(username, await auth.hash_password(ask_password()), is_admin)
-            print(f"Compte {user['username']} créé{' (admin)' if is_admin else ''}.")
+            print(f"Account {user['username']} created{' (admin)' if is_admin else ''}.")
         elif command == "passwd":
             if not await database.set_password(username, await auth.hash_password(ask_password())):
-                raise LookupError(f"Aucun compte {username}.")
-            print(f"Mot de passe de {username} changé ; ses sessions de connexion sont révoquées.")
+                raise LookupError(f"No account named {username}.")
+            print(f"Password of {username} changed; their login sessions are revoked.")
         elif command == "deluser":
-            if input(f"Supprimer {username} et ses conversations ? [o/N] ").lower() != "o":
+            if input(f"Delete {username} and their conversations? [y/N] ").lower() != "y":
                 return 1
             if not await database.delete_user(username):
-                raise LookupError(f"Aucun compte {username}.")
-            print(f"Compte {username} supprimé.")
+                raise LookupError(f"No account named {username}.")
+            print(f"Account {username} deleted.")
     except asyncpg.UniqueViolationError:
-        print(f"Erreur : le compte {username} existe déjà.")
+        print(f"Error: the account {username} already exists.")
         return 1
     except (ValueError, LookupError) as e:
-        print(f"Erreur : {e}")
+        print(f"Error: {e}")
         return 1
     finally:
         await database.close_db()
@@ -78,22 +78,22 @@ async def manage_documents(command: str, args: list[str]) -> int:
             for path in map(Path, args):
                 try:
                     result = await rag.ingest(path.name, path.read_bytes())
-                    print(f"{path} : indexé (id {result['id']}, {result['chunks']} passage(s)).")
+                    print(f"{path}: indexed (id {result['id']}, {result['chunks']} passage(s)).")
                 except (OSError, rag.DocumentError, EmbeddingError) as e:
-                    print(f"{path} : {e}")
+                    print(f"{path}: {e}")
                     status = 1
         elif command == "documents":
             documents = await database.list_documents()
             for d in documents:
                 print(f"{d['id']:>5}  {d['source']}  ({d['chunks']} passage(s), {d['created_at']:%Y-%m-%d})")
             if not documents:
-                print("Aucun document indexé.")
+                print("No indexed document.")
         elif command == "unindex":
             if not args[0].isdigit() or not await database.delete_document(int(args[0])):
-                print(f"Erreur : aucun document d'id {args[0]} (voir python main.py documents).")
+                print(f"Error: no document with id {args[0]} (see python main.py documents).")
                 status = 1
             else:
-                print(f"Document {args[0]} retiré.")
+                print(f"Document {args[0]} removed.")
     finally:
         await embeddings.stop_client()
         await database.close_db()
@@ -118,10 +118,10 @@ async def sync_cards(args: list[str]) -> int:
             await run_sync(force="--force" in args)
         await embed_cards(reembed="--reembed" in args)
     except SyncError as e:
-        print(f"Erreur : {e}")
+        print(f"Error: {e}")
         return 1
     except EmbeddingError as e:
-        print(f"Vectorisation incomplète : {e}\nRelancer python main.py sync-cards --embed-only une fois le fournisseur disponible.")
+        print(f"Embedding incomplete: {e}\nRun python main.py sync-cards --embed-only once the provider is available.")
         return 1
     finally:
         await embeddings.stop_client()
@@ -135,13 +135,13 @@ if __name__ == "__main__":
     if mode == "server":
         import uvicorn
         from src.api.server import app
-        print(f"Serveur d'inférence sur {BIND_HOST}:{SERVER_PORT}")
+        print(f"Inference server on {BIND_HOST}:{SERVER_PORT}")
         uvicorn.run(app, host=BIND_HOST, port=SERVER_PORT)
 
     elif mode == "client":
         import uvicorn
         from src.client.web import app
-        print(f"Interface Jaden sur http://127.0.0.1:{CLIENT_PORT}")
+        print(f"Jaden interface on http://127.0.0.1:{CLIENT_PORT}")
         uvicorn.run(app, host="127.0.0.1", port=CLIENT_PORT)
 
     elif mode in ("adduser", "passwd", "deluser"):

@@ -16,15 +16,15 @@ async def search_documents(_user_id: int, query: str, k: int = DEFAULT_SEARCH_RE
     k = max(1, min(int(k), MAX_SEARCH_RESULTS))
     candidates = await rag.search(query, k)
     if not candidates:
-        return "Aucun document indexé."
+        return "No indexed document."
     # Un passage trouvé par mots-clés (BM25) est gardé même sous le seuil cosinus :
     # c'est le cas typique d'un identifiant ou d'un nom propre que les embeddings ratent.
     results = [r for r in candidates if r["score"] >= RAG_MIN_SCORE or r.get("bm25") is not None]
     if not results:
         best = max(r["score"] for r in candidates)
         return (
-            f"Aucun passage suffisamment pertinent (meilleur score {best:.2f}, "
-            f"seuil {RAG_MIN_SCORE:.2f}). Reformule la requête ou réponds sans les documents."
+            f"No passage relevant enough (best score {best:.2f}, "
+            f"threshold {RAG_MIN_SCORE:.2f}). Rephrase the query or answer without the documents."
         )
     return rag.format_passages(results)
 
@@ -37,18 +37,18 @@ TOOLS: Dict[str, Dict[str, Any]] = {
     "search_documents": {
         "function": search_documents,
         "description": (
-            "Recherche dans les documents de référence (règles, guides), par le sens "
-            "et par mots-clés (noms propres, identifiants, termes exacts). "
-            "Renvoie au plus k passages pertinents avec leur source : "
-            "peut en renvoyer moins, voire aucun, si rien n'est assez proche."
+            "Search the reference documents (rules, guides) by meaning "
+            "and by keywords (proper names, identifiers, exact terms). "
+            "Returns at most k relevant passages with their source: "
+            "may return fewer, or none, if nothing is close enough."
         ),
         "parameters": {
             "type": "object",
             "properties": {
-                "query": {"type": "string", "description": "Ce que l'on cherche, formulé en langage naturel."},
+                "query": {"type": "string", "description": "What to look for, in natural language (English)."},
                 "k": {
                     "type": "integer",
-                    "description": f"Nombre de passages à renvoyer (défaut {DEFAULT_SEARCH_RESULTS}, max {MAX_SEARCH_RESULTS}).",
+                    "description": f"Number of passages to return (default {DEFAULT_SEARCH_RESULTS}, max {MAX_SEARCH_RESULTS}).",
                 },
             },
             "required": ["query"],
@@ -72,7 +72,7 @@ async def execute_tool(name: str, raw_arguments: str | Dict[str, Any] | None, us
     """
     tool = TOOLS.get(name)
     if tool is None:
-        return f"Erreur : tool inconnu '{name}'."
+        return f"Error: unknown tool '{name}'."
 
     # Les arguments sont normalement une chaîne JSON, mais certains
     # fournisseurs renvoient directement un objet.
@@ -82,10 +82,10 @@ async def execute_tool(name: str, raw_arguments: str | Dict[str, Any] | None, us
         try:
             arguments = json.loads(raw_arguments or "{}")
         except json.JSONDecodeError:
-            return f"Erreur : arguments JSON invalides pour '{name}'."
+            return f"Error: invalid JSON arguments for '{name}'."
 
     if not isinstance(arguments, dict):
-        return f"Erreur : les arguments de '{name}' doivent être un objet JSON."
+        return f"Error: the arguments of '{name}' must be a JSON object."
     # user_id vient du serveur, jamais du modèle.
     arguments.pop("user_id", None)
 
@@ -93,8 +93,8 @@ async def execute_tool(name: str, raw_arguments: str | Dict[str, Any] | None, us
     try:
         return await func(user_id, **arguments)
     except (TypeError, ValueError) as e:
-        return f"Erreur : arguments incorrects pour '{name}' ({e})."
+        return f"Error: wrong arguments for '{name}' ({e})."
     except EmbeddingError as e:
-        return f"Erreur : {e}"
+        return f"Error: {e}"
     except (OSError, asyncpg.PostgresError) as e:
-        return f"Erreur de base de données : {e}"
+        return f"Database error: {e}"

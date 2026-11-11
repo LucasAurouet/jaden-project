@@ -25,7 +25,7 @@ class AuthError(Exception):
 
 async def hash_password(password: str) -> str:
     if len(password) < MIN_PASSWORD_LENGTH:
-        raise ValueError(f"Le mot de passe doit faire au moins {MIN_PASSWORD_LENGTH} caractères.")
+        raise ValueError(f"The password must be at least {MIN_PASSWORD_LENGTH} characters long.")
     # argon2 est volontairement lent : hors de la boucle asyncio.
     return await asyncio.to_thread(_hasher.hash, password)
 
@@ -47,7 +47,7 @@ async def login(username: str, password: str) -> Tuple[str, Dict[str, Any]]:
     valid = await _verify_password(user["password_hash"] if user else _DUMMY_HASH, password)
     if not (user and valid):
         await asyncio.sleep(FAILED_LOGIN_DELAY)
-        raise AuthError("Identifiant ou mot de passe incorrect.")
+        raise AuthError("Wrong username or password.")
 
     token = secrets.token_urlsafe(32)
     await database.create_token(user["id"], _token_hash(token), AUTH_TOKEN_TTL_DAYS)

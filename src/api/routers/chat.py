@@ -17,7 +17,7 @@ async def compute(request: ComputeRequest, user: Dict[str, Any] = Depends(get_cu
     # Vérifié avant d'ouvrir le flux, pour renvoyer un vrai 404. save_exchange
     # revérifie à l'enregistrement.
     if await database.session_belongs_to_other(request.session_id, user["id"]):
-        raise HTTPException(status_code=404, detail="Conversation introuvable.")
+        raise HTTPException(status_code=404, detail="Conversation not found.")
     return StreamingResponse(
         ChatService.stream_compute(user_id=user["id"], session_id=request.session_id, prompt=request.prompt),
         media_type="text/event-stream",

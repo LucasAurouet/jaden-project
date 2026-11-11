@@ -5,7 +5,7 @@ from starlette.background import BackgroundTask
 from src.api.dependencies import verify_token
 from src.api.services.inference import forward
 
-router = APIRouter(tags=["Inférence (compatible OpenAI)"])
+router = APIRouter(tags=["Inference (OpenAI-compatible)"])
 
 
 def _relay(upstream: httpx.Response) -> StreamingResponse:

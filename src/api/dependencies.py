@@ -19,15 +19,15 @@ async def verify_token(credentials: HTTPAuthorizationCredentials | None = Depend
     proxy OpenAI brut). Lève une erreur 401 si elle est manquante ou invalide.
     """
     if credentials is None:
-        raise _unauthorized("Clé Jaden manquante (en-tête Authorization: Bearer <clé>).")
+        raise _unauthorized("Missing Jaden key (Authorization: Bearer <key> header).")
     if not JADEN_KEY or not secrets.compare_digest(credentials.credentials, JADEN_KEY):
-        raise _unauthorized("Clé Jaden invalide.")
+        raise _unauthorized("Invalid Jaden key.")
     return credentials.credentials
 
 
 async def bearer_token(credentials: HTTPAuthorizationCredentials | None = Depends(_bearer)) -> str:
     if credentials is None:
-        raise _unauthorized("Connexion requise.")
+        raise _unauthorized("Login required.")
     return credentials.credentials
 
 
@@ -35,5 +35,5 @@ async def get_current_user(token: str = Depends(bearer_token)) -> Dict[str, Any]
     """Utilisateur du jeton de connexion ; 401 s'il est inconnu, expiré ou révoqué."""
     user = await user_from_token(token)
     if user is None:
-        raise _unauthorized("Session expirée : reconnectez-vous.")
+        raise _unauthorized("Session expired: please log in again.")
     return user

@@ -117,7 +117,7 @@ class CardFilters:
         if self.card_type:
             kind = self.card_type.lower()
             if kind not in CARD_TYPES:
-                raise ValueError(f"card_type inconnu '{self.card_type}' (valeurs : {', '.join(CARD_TYPES)})")
+                raise ValueError(f"unknown card_type '{self.card_type}' (values: {', '.join(CARD_TYPES)})")
             if kind == "monster":
                 conditions.append("c.frame_type NOT IN ('spell', 'trap')")
             elif kind in ("spell", "trap"):

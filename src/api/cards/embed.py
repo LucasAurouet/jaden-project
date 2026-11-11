@@ -53,10 +53,10 @@ async def embed_cards(reembed: bool = False, log: Callable[[str], None] = print)
             pending.append((row["id"], text, digest))
 
     if not pending:
-        log("Vecteurs des cartes à jour.")
+        log("Card vectors are up to date.")
         return 0
 
-    log(f"Vectorisation de {len(pending)} carte(s)…")
+    log(f"Embedding {len(pending)} card(s)…")
     done = 0
     for start in range(0, len(pending), WRITE_BATCH):
         batch = pending[start:start + WRITE_BATCH]

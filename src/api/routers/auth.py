@@ -4,7 +4,7 @@ from src.api.dependencies import bearer_token, get_current_user
 from src.api.services import auth
 from src.schemas import LoginRequest, LoginResponse, UserOut
 
-router = APIRouter(prefix="/auth", tags=["Authentification"])
+router = APIRouter(prefix="/auth", tags=["Authentication"])
 
 
 @router.post("/login")

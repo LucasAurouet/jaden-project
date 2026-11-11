@@ -42,9 +42,9 @@ async def _request(method: str, path: str, token: str | None, stream: bool = Fal
     try:
         response = await _client.send(request, stream=stream)
     except httpx.ConnectError as e:
-        raise ServerError(502, f"Serveur d'inférence injoignable ({SERVER_URL}).") from e
+        raise ServerError(502, f"Inference server unreachable ({SERVER_URL}).") from e
     except httpx.TimeoutException as e:
-        raise ServerError(504, "Le serveur d'inférence a mis trop de temps à répondre.") from e
+        raise ServerError(504, "The inference server took too long to answer.") from e
 
     if response.is_error:
         await response.aread()
