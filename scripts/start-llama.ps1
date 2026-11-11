@@ -1,6 +1,6 @@
 ﻿<#
 .SYNOPSIS
-    Lance les deux llama-server de Homn (chat + embeddings) pour le développement.
+    Lance les deux llama-server de Jaden (chat + embeddings) pour le développement.
 
 .DESCRIPTION
     Démarre les deux instances en arrière-plan, attend qu'elles aient chargé leur

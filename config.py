@@ -5,7 +5,7 @@ load_dotenv()
 
 # Clé d'accès machine au proxy OpenAI brut (/v1/chat/completions, /v1/models).
 # Les utilisateurs, eux, se connectent avec leur compte (python main.py adduser).
-HOMN_KEY: str = os.getenv("HOMN_KEY", "")
+JADEN_KEY: str = os.getenv("JADEN_KEY", "")
 
 # Durée de vie d'un jeton de connexion, en jours.
 AUTH_TOKEN_TTL_DAYS: int = int(os.getenv("AUTH_TOKEN_TTL_DAYS", "30"))
@@ -56,7 +56,7 @@ RAG_AUTO_MIN_SCORE: float = float(os.getenv("RAG_AUTO_MIN_SCORE", "0.7"))
 RAG_HYBRID_SEARCH: bool = os.getenv("RAG_HYBRID_SEARCH", "true").lower() == "true"
 
 # Postgres avec l'extension pgvector : historique et documents.
-DATABASE_URL: str = os.getenv("DATABASE_URL", "postgresql://homn:homn@127.0.0.1:5432/homn")
+DATABASE_URL: str = os.getenv("DATABASE_URL", "postgresql://jaden:jaden@127.0.0.1:5432/jaden")
 
 # ─── Client (poste de travail) ──────────────────────────────────────────────
 # Adresse du serveur d'inférence à contacter (SERVER_PORT sert aussi

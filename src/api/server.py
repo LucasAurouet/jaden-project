@@ -23,7 +23,7 @@ async def lifespan(app: FastAPI):
     await close_db()
     print("Fermeture du serveur")
 
-app = FastAPI(title="Homn Systems Inference Server", lifespan=lifespan)
+app = FastAPI(title="Jaden Inference Server", lifespan=lifespan)
 
 
 def _error(status: int, message: str, kind: str) -> JSONResponse:
@@ -40,7 +40,7 @@ async def upstream_timeout(request: Request, exc: UpstreamTimeout):
 
 @app.get("/")
 async def root():
-    return {"service": "homn-inference", "node": SERVER_NAME}
+    return {"service": "jaden-inference", "node": SERVER_NAME}
 
 app.include_router(system_router, prefix="/v1")
 app.include_router(inference_router, prefix="/v1")

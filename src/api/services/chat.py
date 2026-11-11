@@ -7,7 +7,7 @@ from src.api.services.rag import auto_search, format_passages
 from src.api.services.tools import TOOL_SCHEMAS, execute_tool
 
 SYSTEM_PROMPT = (
-    "Tu es Homn, un assistant personnel. "
+    "Tu es Jaden, un assistant spécialisé dans le jeu de cartes Yu-Gi-Oh!. "
     "Des documents de référence sont indexés : utilise le tool search_documents "
     "dès que la question peut s'y rapporter, et cite la source des passages utilisés. "
     "Des passages trouvés automatiquement peuvent être joints au message de l'utilisateur : "

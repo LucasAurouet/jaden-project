@@ -3,7 +3,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
-from src.client.services import homn
+from src.client.services import jaden
 from src.client.routers.auth import router as auth_router
 from src.client.routers.chat import router as chat_router
 from src.client.routers.sessions import router as sessions_router
@@ -14,13 +14,13 @@ static_path = os.path.join(os.path.dirname(__file__), "static")
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    await homn.start_client()
-    print(f"Serveur d'inférence : {homn.SERVER_URL}")
+    await jaden.start_client()
+    print(f"Serveur d'inférence : {jaden.SERVER_URL}")
     yield
-    await homn.stop_client()
+    await jaden.stop_client()
 
 
-app = FastAPI(title="Homn Systems Client", lifespan=lifespan)
+app = FastAPI(title="Jaden Client", lifespan=lifespan)
 
 @app.get("/")
 async def root():

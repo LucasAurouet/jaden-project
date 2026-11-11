@@ -1,8 +1,8 @@
 from fastapi import APIRouter, Depends
 from typing import Any, Dict, List
 from src.client.dependencies import relay_error, session_token
-from src.client.services import homn
-from src.client.services.homn import ServerError
+from src.client.services import jaden
+from src.client.services.jaden import ServerError
 
 router = APIRouter(tags=["Conversations"])
 
@@ -10,7 +10,7 @@ router = APIRouter(tags=["Conversations"])
 @router.get("/sessions")
 async def list_sessions(token: str = Depends(session_token)) -> List[Dict[str, Any]]:
     try:
-        return await homn.list_sessions(token)
+        return await jaden.list_sessions(token)
     except ServerError as e:
         raise relay_error(e)
 
@@ -18,7 +18,7 @@ async def list_sessions(token: str = Depends(session_token)) -> List[Dict[str, A
 @router.get("/sessions/{session_id}/messages")
 async def get_messages(session_id: str, token: str = Depends(session_token)) -> List[Dict[str, Any]]:
     try:
-        return await homn.get_messages(token, session_id)
+        return await jaden.get_messages(token, session_id)
     except ServerError as e:
         raise relay_error(e)
 
@@ -26,6 +26,6 @@ async def get_messages(session_id: str, token: str = Depends(session_token)) -> 
 @router.delete("/sessions/{session_id}", status_code=204)
 async def delete_session(session_id: str, token: str = Depends(session_token)):
     try:
-        await homn.delete_session(token, session_id)
+        await jaden.delete_session(token, session_id)
     except ServerError as e:
         raise relay_error(e)

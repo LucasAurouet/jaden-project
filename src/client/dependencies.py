@@ -1,11 +1,11 @@
 from fastapi import HTTPException, Request
 from fastapi.responses import Response
 from config import AUTH_TOKEN_TTL_DAYS, COOKIE_SECURE
-from src.client.services.homn import ServerError
+from src.client.services.jaden import ServerError
 
 # Jeton de connexion du navigateur. HttpOnly : invisible au JavaScript de la page.
 # SameSite=Strict : jamais envoyé par une requête venue d'un autre site (CSRF).
-COOKIE_NAME = "homn_session"
+COOKIE_NAME = "jaden_session"
 
 
 def session_token(request: Request) -> str:

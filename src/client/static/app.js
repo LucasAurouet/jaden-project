@@ -407,7 +407,7 @@ function createStreamingReply() {
 }
 
 
-const SENDER_LABEL = { user: "OPÉRATEUR", assistant: "HOMN", error: "SYSTÈME // ERREUR" };
+const SENDER_LABEL = { user: "OPÉRATEUR", assistant: "JADEN", error: "SYSTÈME // ERREUR" };
 
 function createMessage(sender, date = new Date()) {
     document.getElementById("boot")?.remove();
